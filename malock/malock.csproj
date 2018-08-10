@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{75D0A297-694F-42EA-BB5C-55133FE3E170}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>malock</RootNamespace>
+    <AssemblyName>malock</AssemblyName>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Auxiliary\NetAuxiliary.cs" />
+    <Compile Include="Auxiliary\Ipep.cs" />
+    <Compile Include="Auxiliary\MalockSocketAuxiliary.cs" />
+    <Compile Include="Client\IWaitableHandler.cs" />
+    <Compile Include="Client\HandleInfo.cs" />
+    <Compile Include="Client\MalockClient.cs" />
+    <Compile Include="Client\MalockSocket.cs" />
+    <Compile Include="Client\MalockSocketException.cs" />
+    <Compile Include="Client\MalockSocketStream.cs" />
+    <Compile Include="Core\LinkedListIterator.cs" />
+    <Compile Include="Core\SpinLock.cs" />
+    <Compile Include="Core\Timer.cs" />
+    <Compile Include="Core\TimerScheduler.cs" />
+    <Compile Include="Malock.cs" />
+    <Compile Include="Monitor.cs" />
+    <Compile Include="Client\EventWaitHandle.cs" />
+    <Compile Include="Core\AtomicBoolean.cs" />
+    <Compile Include="Server\IMalockSender.cs" />
+    <Compile Include="Server\MalockServer.cs" />
+    <Compile Include="Server\MalockSocket.cs" />
+    <Compile Include="Server\MalockSocketListener.cs" />
+    <Compile Include="Server\MalockSocketStream.cs" />
+    <Compile Include="Server\MalockStandby.cs" />
+    <Compile Include="Server\MalockTable.cs" />
+    <Compile Include="Common\Message.cs" />
+    <Compile Include="Server\MalockEngine.cs" />
+    <Compile Include="Server\MalockTaskInfo.cs" />
+    <Compile Include="Server\MalockTaskPoll.cs" />
+    <Compile Include="Server\MalockTaskType.cs" />
+    <Compile Include="SpinLock.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties\" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
