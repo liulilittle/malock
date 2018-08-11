@@ -56,6 +56,7 @@
                 else
                 {
                     this.malockTable.Exit(info.Key, info.Identity);
+                    this.AckPipelineEnter(info);
                 }
             }
             return false;

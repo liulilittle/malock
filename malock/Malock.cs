@@ -24,7 +24,7 @@
         /// <summary>
         /// 确认流水线周期时间
         /// </summary>
-        public const int AckPipelineInterval = 500;
+        public const int AckPipelineInterval = 333;
         /// <summary>
         /// 确认流水线死锁所需次数
         /// </summary>
