@@ -41,7 +41,6 @@
     <Compile Include="Auxiliary\NetAuxiliary.cs" />
     <Compile Include="Auxiliary\Ipep.cs" />
     <Compile Include="Auxiliary\MalockSocketAuxiliary.cs" />
-    <Compile Include="Client\EventWaitHandlePoll.cs" />
     <Compile Include="Client\IWaitableHandler.cs" />
     <Compile Include="Client\HandleInfo.cs" />
     <Compile Include="Client\MalockClient.cs" />

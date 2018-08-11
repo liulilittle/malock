@@ -4,12 +4,14 @@
     using System;
     using System.IO;
     using HandleInfo = global::malock.Client.HandleInfo;
+    using System.Collections.Generic;
 
     public class MalockEngine
     {
         private MalockTaskPoll malockTaskPoll = null;
         private MalockTable malockTable = null;
         private MalockStandby malockStandby = null;
+        private Dictionary<string, int> ackDeadlock = new Dictionary<string, int>();
 
         public MalockEngine(MalockTable malockTable, string standbyMachine)
         {
@@ -59,15 +61,56 @@
             return false;
         }
 
-        public bool Exit(MalockTaskInfo info, bool immediate = false)
+        public void AckEnter(MalockTaskInfo info)
+        {
+            string key = this.GetAckKey(info);
+            lock (this.ackDeadlock)
+            {
+                int count = 0;
+                if (this.ackDeadlock.TryGetValue(key, out count))
+                {
+                    this.ackDeadlock[key] = 0;
+                }
+            }
+        }
+
+        private string GetAckKey(MalockTaskInfo info)
+        {
+            return this.GetAckKey(info.Identity, info.Key);
+        }
+
+        private string GetAckKey(string identity, string key)
+        {
+            return identity + "|" + key;
+        }
+
+        public void AckExit(MalockTaskInfo info)
+        {
+            string key = this.GetAckKey(info);
+            lock (this.ackDeadlock)
+            {
+                int count = 0;
+                if (!this.ackDeadlock.TryGetValue(key, out count))
+                {
+                    this.ackDeadlock.Add(key, ++count);
+                }
+                else
+                {
+                    this.ackDeadlock[key] = ++count;
+                }
+                if (count > Malock.AckNumberOfDeadlock)
+                {
+                    this.ackDeadlock[key] = 0;
+                    this.Exit(info);
+                }
+            }
+        }
+
+        public bool Exit(MalockTaskInfo info)
         {
             byte errno = Message.CLIENT_COMMAND_LOCK_EXIT;
             if (!this.malockTable.Exit(info.Key, info.Identity))
             {
-                if (!immediate)
-                {
-                    return false;
-                }
                 errno = Message.CLIENT_COMMAND_ERROR;
             }
             using (Stream message = this.NewMessage(info.Key, info.Identity, errno, info.Sequence, info.Timeout).Serialize())
@@ -75,6 +118,7 @@
                 this.SendMessage(info.Socket, message);
                 this.SendMessage(malockStandby, message);
             }
+            this.AckEnter(info);
             return true;
         }
 

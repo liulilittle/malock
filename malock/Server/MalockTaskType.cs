@@ -6,5 +6,7 @@
         kExit,
         kGetAllInfo,
         kAbort,
+        kAckExit,
+        kAckEnter,
     }
 }

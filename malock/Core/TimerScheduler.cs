@@ -13,6 +13,7 @@
         private bool _disposed;
         private readonly LinkedList<Timer> _s;
         private LinkedListIterator<Timer> _i;
+        private readonly int _interval;
         private readonly IDictionary<Timer, LinkedListNode<Timer>> _m;
 
         public static TimerScheduler Default
@@ -43,8 +44,14 @@
             this.Dispose();
         }
 
-        public TimerScheduler()
+        public TimerScheduler() : this(1)
         {
+
+        }
+
+        public TimerScheduler(int interval)
+        {
+            _interval = interval;
             _m = new Dictionary<Timer, LinkedListNode<Timer>>();
             _s = new LinkedList<Timer>();
             _i = new LinkedListIterator<Timer>(this, _s);
@@ -91,7 +98,7 @@
                             t.lasttime = DateTime.Now;
                             t.DoTickEvent();
                         } while (false);
-                        Thread.Sleep(1);
+                        Thread.Sleep(_interval);
                     }
                 });
                 _mta.IsBackground = true;

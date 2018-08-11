@@ -2,11 +2,11 @@
 {
     using global::malock.Common;
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
     using System.Threading;
+    using Timer = global::malock.Core.Timer;
 
     public abstract class EventWaitHandle
     {
@@ -95,6 +95,7 @@
         private volatile Thread enterthread = null;
         private volatile int entercount = 0;
         private readonly object syncobj = new object();
+        private readonly Timer ackstatetimer = null;
 
         public string Key
         {
@@ -140,6 +141,33 @@
             this.malock = malock;
             this.malock.Aborted += this.ProcessAbort;
             Message.Bind(this.malock);
+            do
+            {
+                this.ackstatetimer = new Timer();
+                this.ackstatetimer.Tick += this.OnAckstatetimerTick;
+                this.ackstatetimer.Interval = Malock.AckInterval;
+                this.ackstatetimer.Start();
+            } while (false);
+        }
+
+        private void OnAckstatetimerTick(object sender, EventArgs e)
+        {
+            Exception exception = null;
+            this.TryPostAckLockStateMessage(ref exception);
+        }
+
+        private bool TryPostAckLockStateMessage(ref Exception exception)
+        {
+            byte errno = Message.CLIENT_COMMAND_LOCK_ACK_ENTER;
+            lock (this.syncobj)
+            {
+                if (this.enterthread == null)
+                {
+                    errno = Message.CLIENT_COMMAND_LOCK_ACK_EXIT;
+                }
+            }
+            Message message = this.NewMesssage(errno, -1);
+            return this.TryPostMessage(message, ref exception);
         }
 
         private void ProcessAbort(object sender, EventArgs e)
@@ -203,7 +231,7 @@
         {
             public int millisecondsTimeout;
             public bool localTaken;
-            public bool aborted; 
+            public bool aborted;
             private EventWaitHandle handle;
             private IWaitableHandler signal;
 
@@ -345,7 +373,7 @@
         private bool TryPostExitMessage(ref Exception exception)
         {
             Message message = this.NewMesssage(Message.CLIENT_COMMAND_LOCK_EXIT, -1);
-            return this.TryInvokeAsync(message, -1, null, ref exception);
+            return this.TryPostMessage(message, ref exception);
         }
 
         protected internal virtual bool Exit()
@@ -372,10 +400,7 @@
                 }
                 if (Interlocked.Decrement(ref this.entercount) <= 0)
                 {
-                    lock (this.syncobj)
-                    {
-                        this.enterthread = null;
-                    }
+                    this.enterthread = null;
                     this.TryPostExitMessage(ref exception);
                 }
             }
@@ -442,6 +467,20 @@
             }
         }
 
+        private bool TryPostMessage(Message message, ref Exception exception)
+        {
+            using (MemoryStream ms = (MemoryStream)message.Serialize())
+            {
+                if (!this.malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
+                {
+                    Message.FromRemoveInMap(message.Sequence);
+                    exception = new InvalidOperationException("The poll send returned results do not match the expected");
+                    return false;
+                }
+            }
+            return true;
+        }
+
         private bool TryInvokeAsync(Message message, int timeout, Action<int, Message, Stream> callback, ref Exception exception)
         {
             Mappable mapinfo = new EventWaitHandle.Mappable()
@@ -457,16 +496,7 @@
                 exception = new InvalidOperationException("An internal error cannot add a call to a rpc-task in the map table");
                 return false;
             }
-            using (MemoryStream ms = (MemoryStream)message.Serialize())
-            {
-                if (!this.malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
-                {
-                    Message.FromRemoveInMap(message.Sequence);
-                    exception = new InvalidOperationException("The poll send returned results do not match the expected");
-                    return false;
-                }
-            }
-            return true;
+            return this.TryPostMessage(message, ref exception);
         }
     }
 }

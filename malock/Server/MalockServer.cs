@@ -116,7 +116,9 @@
         {
             if (message.Command == Message.CLIENT_COMMAND_LOCK_ENTER ||
                 message.Command == Message.CLIENT_COMMAND_LOCK_EXIT ||
-                message.Command == Message.CLIENT_COMMAND_GETALLINFO)
+                message.Command == Message.CLIENT_COMMAND_GETALLINFO || 
+                message.Command == Message.CLIENT_COMMAND_LOCK_ACK_EXIT || 
+                message.Command == Message.CLIENT_COMMAND_LOCK_ACK_ENTER)
             {
                 MalockTaskInfo info = new MalockTaskInfo();
                 switch (message.Command)
@@ -129,6 +131,12 @@
                         break;
                     case Message.CLIENT_COMMAND_GETALLINFO:
                         info.Type = MalockTaskType.kGetAllInfo;
+                        break;
+                    case Message.CLIENT_COMMAND_LOCK_ACK_EXIT:
+                        info.Type = MalockTaskType.kAckExit;
+                        break;
+                    case Message.CLIENT_COMMAND_LOCK_ACK_ENTER:
+                        info.Type = MalockTaskType.kAckEnter;
                         break;
                 }
                 info.Sequence = message.Sequence;
@@ -144,18 +152,26 @@
                 } while (false);
                 if (message.Command == Message.CLIENT_COMMAND_LOCK_EXIT)
                 {
-                    malockEngine.Exit(info, true);
+                    this.malockEngine.Exit(info);
                 }
                 else if (message.Command == Message.CLIENT_COMMAND_LOCK_ENTER)
                 {
-                    if (!malockEngine.Enter(info)) 
+                    if (!this.malockEngine.Enter(info))
                     {
-                        malockEngine.GetPoll().Add(socket.Identity, info);
+                        this.malockEngine.GetPoll().Add(socket.Identity, info);
                     }
+                }
+                else if (message.Command == Message.CLIENT_COMMAND_LOCK_ACK_EXIT)
+                {
+                    this.malockEngine.AckExit(info); // anti-deadlock
+                }
+                else if (message.Command == Message.CLIENT_COMMAND_LOCK_ACK_ENTER)
+                {
+                    this.malockEngine.AckEnter(info);
                 }
                 else if (message.Command == Message.CLIENT_COMMAND_GETALLINFO)
                 {
-                    malockEngine.GetAllInfo(info);
+                    this.malockEngine.GetAllInfo(info);
                 }
             }
         }

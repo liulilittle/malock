@@ -8,7 +8,7 @@
 
     public static class Malock
     {
-        private static readonly TimerScheduler scheduler = new TimerScheduler();
+        private static readonly TimerScheduler scheduler = new TimerScheduler(100);
         /// <summary>
         /// 连接中断后重连间隔时间
         /// </summary>
@@ -21,6 +21,14 @@
         /// 最大重入数
         /// </summary>
         public const int MaxEnterCount = 10000;
+        /// <summary>
+        /// 确认周期时间
+        /// </summary>
+        public const int AckInterval = 500;
+        /// <summary>
+        /// 确认死锁所需次数
+        /// </summary>
+        public const int AckNumberOfDeadlock = 3;
 
         public static void Ngen(Assembly assembly)
         {
