@@ -90,6 +90,7 @@
                     string[] keys;
                     MalockTable malock = this.malockEngine.GetTable();
                     malock.Exit(message.Identity, out keys);
+                    this.malockEngine.AckPipelineEnter(message.Identity, keys);
                 }
             }
         }
@@ -206,18 +207,7 @@
                 string[] keys;
                 MalockTable malock = this.malockEngine.GetTable();
                 malock.Exit(message.Identity, out keys);
-                do
-                {
-                    for (int i = 0; i < keys.Length; i++)
-                    {
-                        string key = keys[i];
-                        this.malockEngine.AckPipelineExit(new MalockTaskInfo()
-                        {
-                            Key = key,
-                            Identity = message.Identity,
-                        });
-                    }
-                } while (false);
+                this.malockEngine.AckPipelineEnter(message.Identity, keys);
             }
         }
 

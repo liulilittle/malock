@@ -144,10 +144,32 @@
             {
                 string[] keys;
                 this.malockTable.FreeKeyCollection(info.Identity, out keys);
+                this.AckPipelineEnter(info.Identity, keys);
             } while (false);
             Message message = this.NewMessage(info.Key, info.Identity, Message.SERVER_COMMAND_SYN_FREE, info.Sequence, -1);
             this.SendMessage(this.malockStandby, message);
             return true;
+        }
+
+        public void AckPipelineEnter(string identity, string[] keys)
+        {
+            if (keys == null || keys.Length <= 0)
+            {
+                return;
+            }
+            if (string.IsNullOrEmpty(identity))
+            {
+                return;
+            }
+            for (int i = 0; i < keys.Length; i++)
+            {
+                string key = keys[i];
+                this.AckPipelineEnter(new MalockTaskInfo()
+                {
+                    Key = key,
+                    Identity = identity,
+                });
+            }
         }
 
         public unsafe bool GetAllInfo(MalockTaskInfo info)
