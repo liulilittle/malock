@@ -1,19 +1,44 @@
 ﻿namespace malock.Client
 {
+    using malock.Common;
+    using malock.Core;
     using System;
+    using System.IO;
+    using MSG = malock.Common.Message;
 
-    public class MalockClient
+    public class MalockClient : EventArgs
     {
         private MalockSocket[] sockets = new MalockSocket[2];
         private MalockSocket preferred = null; // 首选服务器索引
         private DateTime firsttime = DateTime.MinValue;
-        private bool connisready = false;
         private readonly object syncobj = new object();
+        private readonly MixEvent<EventHandler<MalockNetworkMessage>> messageevents = new MixEvent<EventHandler<MalockNetworkMessage>>();
+        private readonly MixEvent<EventHandler> abortedevents = new MixEvent<EventHandler>();
 
         private const int BESTMAXCONNECTTIME = 1000;
 
-        public virtual event EventHandler<MalockSocketStream> Received = null;
-        public virtual event EventHandler Aborted = null;
+        public virtual event EventHandler<MalockNetworkMessage> Message
+        {
+            add
+            {
+                this.messageevents.Add(value);
+            }
+            remove
+            {
+                this.messageevents.Remove(value);
+            }
+        }
+        public virtual event EventHandler Aborted
+        {
+            add
+            {
+                this.abortedevents.Add(value);
+            }
+            remove
+            {
+                this.abortedevents.Remove(value);
+            }
+        }
         public virtual event EventHandler Ready = null; // 准备就绪
         /// <summary>
         /// 代表客户端唯一的身份标识
@@ -46,10 +71,8 @@
         /// </summary>
         public bool IsReady
         {
-            get
-            {
-                return this.connisready;
-            }
+            get;
+            private set;
         }
         /// <summary>
         /// 创建一个双机热备的 malock 客户端
@@ -82,7 +105,7 @@
                         MalockSocket socket = sockets[i];
                         socket.Run();
                     }
-                    if (!this.connisready)
+                    if (!this.IsReady)
                     {
                         this.firsttime = DateTime.Now;
                         var waitforconn = Malock.NewTimer();
@@ -92,13 +115,13 @@
                             bool readying = false;
                             lock (this.syncobj)
                             {
-                                if (!this.connisready)
+                                if (!this.IsReady)
                                 {
                                     socket = this.preferred;
                                     if (socket != null && this.Available)
                                     {
                                         readying = true;
-                                        this.connisready = true;
+                                        this.IsReady = true;
                                     }
                                     waitforconn.Stop();
                                 }
@@ -118,25 +141,33 @@
 
         private void SocketReceived(object sender, MalockSocketStream e)
         {
-            this.OnReceived(e);
+            Message message = null;
+            using (Stream stream = e.Stream)
+            {
+                try
+                {
+                    message = MSG.Deserialize(stream);
+                }
+                catch (Exception)
+                {
+                    MalockSocket socket = e.Socket;
+                    socket.Abort();
+                }
+                if (message != null)
+                {
+                    this.OnMessage(new MalockNetworkMessage(this, e.Socket, stream, message));
+                }
+            }
         }
 
         protected virtual void OnAborted(EventArgs e)
         {
-            var evt = this.Aborted;
-            if (evt != null)
-            {
-                evt(this, e);
-            }
+            this.abortedevents.Invoke((evt) => evt(this, e));
         }
 
-        protected virtual void OnReceived(MalockSocketStream e)
+        protected virtual void OnMessage(MalockNetworkMessage e)
         {
-            var evt = this.Received;
-            if (evt != null)
-            {
-                evt(this, e);
-            }
+            this.messageevents.Invoke((evt) => evt(this, e));
         }
 
         protected virtual MalockSocket Select(MalockSocket socket)
@@ -231,12 +262,12 @@
                         this.preferred = currentsocket;
                     }
                 }
-                if (!this.connisready)
+                if (!this.IsReady)
                 {
                     if (this.AllIsAvailable() || (ts.TotalMilliseconds > BESTMAXCONNECTTIME && this.Available))
                     {
                         readying = true;
-                        this.connisready = true;
+                        this.IsReady = true;
                     }
                 }
                 currentsocket = this.preferred;

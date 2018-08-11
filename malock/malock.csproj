@@ -41,12 +41,15 @@
     <Compile Include="Auxiliary\NetAuxiliary.cs" />
     <Compile Include="Auxiliary\Ipep.cs" />
     <Compile Include="Auxiliary\MalockSocketAuxiliary.cs" />
+    <Compile Include="Client\EventWaitHandlePoll.cs" />
     <Compile Include="Client\IWaitableHandler.cs" />
     <Compile Include="Client\HandleInfo.cs" />
     <Compile Include="Client\MalockClient.cs" />
+    <Compile Include="Client\MalockNetworkMessage.cs" />
     <Compile Include="Client\MalockSocket.cs" />
     <Compile Include="Client\MalockSocketException.cs" />
     <Compile Include="Client\MalockSocketStream.cs" />
+    <Compile Include="Core\MixEvent.cs" />
     <Compile Include="Core\LinkedListIterator.cs" />
     <Compile Include="Core\SpinLock.cs" />
     <Compile Include="Core\Timer.cs" />

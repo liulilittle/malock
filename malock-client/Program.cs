@@ -11,7 +11,7 @@
         static void Main(string[] args)
         {
             AppDomain.CurrentDomain.FirstChanceException += CurrentDomain_FirstChanceException;
-            MalockClient client = Malock.NewClient("test013", "192.168.10.254:6800", "192.168.10.254:6801").Run();
+            MalockClient client = Malock.NewClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             client.Ready += delegate
             {
                 Monitor m = new Monitor("OMFG", client);

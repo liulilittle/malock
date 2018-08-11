@@ -1,21 +1,28 @@
 ﻿namespace malock.Common
 {
+    using global::malock.Client;
     using System;
+    using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
-    using System.Runtime.InteropServices;
     using System.Text;
-    using System.Threading;
+    using Mappable = global::malock.Client.EventWaitHandle.Mappable;
+    using Interlocked = System.Threading.Interlocked;
+    using Thread = System.Threading.Thread;
 
-    internal class Message : EventArgs
+    public class Message : EventArgs
     {
         private static volatile int msgseq = 0;
         private static readonly int processid = Process.GetCurrentProcess().Id;
 
-        public const byte CLIENT_COMMAND_LOCK_ENTER = 0; 
+        public const byte CLIENT_COMMAND_LOCK_ENTER = 0;
         public const byte CLIENT_COMMAND_LOCK_EXIT = 1;
         public const byte CLIENT_COMMAND_GETALLINFO = 2;
 
+        public const byte CLIENT_COMMAND_HEARTBEAT = 0xfa;
+        public const byte CLIENT_COMMAND_LOCK_REPORT_ENTER = 0xfb;
+        public const byte CLIENT_COMMAND_LOCK_REPORT_EXIT = 0xfc;
         public const byte CLIENT_COMMAND_TIMEOUT = 0xfe;
         public const byte CLIENT_COMMAND_ERROR = 0xff;
 
@@ -73,6 +80,11 @@
         {
             get;
             set;
+        }
+
+        internal Message()
+        {
+
         }
 
         public virtual Stream Serialize()
@@ -144,6 +156,153 @@
         public static int NewId()
         {
             return Interlocked.Increment(ref msgseq);
+        }
+
+        private static readonly ConcurrentDictionary<int, Mappable> msgmap = 
+            new ConcurrentDictionary<int, Mappable>();
+        private static Thread timeoutmaintaining = null;
+        private static readonly EventHandler<MalockNetworkMessage> onmessagehandler = (sender, e) =>
+        {
+            Message message = e.Message;
+            Mappable map = Message.GetByMap(message.Sequence);
+            if (map != null)
+            {
+                var state = map.State;
+                if (state != null)
+                {
+                    state(Mappable.ERROR_NOERROR, message, e.Stream);
+                }
+            }
+        };
+        private static readonly EventHandler onabortedhandler = (sender, e) =>
+        {
+            MalockClient malock = (MalockClient)sender;
+            Message.Abort(malock);
+        };
+
+        static Message()
+        {
+            timeoutmaintaining = EventWaitHandle.Run(() =>
+            {
+                while (true)
+                {
+                    foreach (KeyValuePair<int, Mappable> kv in msgmap)
+                    {
+                        Mappable map = kv.Value;
+                        if (map == null || map.Timeout < 0)
+                        {
+                            continue;
+                        }
+                        Stopwatch sw = map.Stopwatch;
+                        if (sw.ElapsedMilliseconds > map.Timeout)
+                        {
+                            sw.Stop();
+
+                            Mappable value;
+                            msgmap.TryRemove(kv.Key, out value);
+
+                            var state = map.State;
+                            if (state != null)
+                            {
+                                state(Mappable.ERROR_TIMEOUT, null, null);
+                            }
+                        }
+                    }
+                    Thread.Sleep(100);
+                }
+            });
+        }
+
+        internal static void Bind(MalockClient malock)
+        {
+            if (malock == null)
+            {
+                throw new ArgumentNullException("malock");
+            }
+            malock.Message += onmessagehandler;
+            malock.Aborted += onabortedhandler;
+        }
+
+        internal static void Unbind(MalockClient malock)
+        {
+            if (malock == null)
+            {
+                throw new ArgumentNullException("malock");
+            }
+            malock.Message -= onmessagehandler;
+            malock.Aborted -= onabortedhandler;
+        }
+
+        internal static bool RegisterToMap(int msgid, Mappable map)
+        {
+            if (map == null)
+            {
+                throw new ArgumentNullException("map");
+            }
+            lock (msgmap)
+            {
+                if (!msgmap.TryAdd(msgid, map))
+                {
+                    return false;
+                }
+                else
+                {
+                    Stopwatch sw = map.Stopwatch;
+                    sw.Reset();
+                    sw.Start();
+                }
+                return true;
+            }
+        }
+
+        internal static bool FromRemoveInMap(int msgid)
+        {
+            return GetByMap(msgid) != null;
+        }
+
+        internal static Mappable GetByMap(int msgid)
+        {
+            Mappable map = null;
+            lock (msgmap)
+            {
+                if (msgmap.TryGetValue(msgid, out map))
+                {
+                    Stopwatch sw = map.Stopwatch;
+                    sw.Stop();
+                    Mappable value;
+                    msgmap.TryRemove(msgid, out value);
+                }
+            }
+            return map;
+        }
+
+        internal static void Abort(MalockClient malock)
+        {
+            if (malock == null)
+            {
+                throw new ArgumentNullException("malock");
+            }
+            lock (msgmap)
+            {
+                foreach (KeyValuePair<int, Mappable> kv in msgmap)
+                {
+                    Mappable map = kv.Value;
+                    if (map == null && map.Client != malock)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        Mappable mv;
+                        msgmap.TryRemove(kv.Key, out mv);
+                    }
+                    var state = map.State;
+                    if (state != null)
+                    {
+                        state(Mappable.ERROR_ABORTED, null, null);
+                    }
+                }
+            }
         }
     }
 }

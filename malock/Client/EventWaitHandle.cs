@@ -10,13 +10,13 @@
 
     public abstract class EventWaitHandle
     {
-        private class EventWaitHandleInvokeMapValue
+        internal class Mappable
         {
             public const int ERROR_TIMEOUT = 2;
             public const int ERROR_ABORTED = 1;
             public const int ERROR_NOERROR = 0;
 
-            public EventWaitHandle Slot
+            public EventWaitHandle Handle
             {
                 get;
                 set;
@@ -40,7 +40,7 @@
                 set;
             }
 
-            public MalockClient Socket
+            public MalockClient Client
             {
                 get;
                 set;
@@ -52,89 +52,10 @@
                 set;
             }
 
-            public EventWaitHandleInvokeMapValue()
+            public Mappable()
             {
                 this.Stopwatch = new Stopwatch();
             }
-        }
-
-        private static ConcurrentDictionary<int, EventWaitHandleInvokeMapValue> msgmap = new ConcurrentDictionary<int, EventWaitHandleInvokeMapValue>();
-        private static Thread timeoutmaintaining = null;
-
-        private static bool RegisterToMap(int msgid, EventWaitHandleInvokeMapValue map)
-        {
-            if (map == null)
-            {
-                throw new ArgumentNullException("map");
-            }
-            lock (msgmap)
-            {
-                if (!msgmap.TryAdd(msgid, map))
-                {
-                    return false;
-                }
-                else
-                {
-                    Stopwatch sw = map.Stopwatch;
-                    sw.Reset();
-                    sw.Start();
-                }
-                return true;
-            }
-        }
-
-        private static bool FromRemoveInMap(int msgid)
-        {
-            return GetByMap(msgid) != null;
-        }
-
-        private static EventWaitHandleInvokeMapValue GetByMap(int msgid)
-        {
-            EventWaitHandleInvokeMapValue map;
-            lock (msgmap)
-            {
-                if (msgmap.TryGetValue(msgid, out map))
-                {
-                    Stopwatch sw = map.Stopwatch;
-                    sw.Stop();
-                    EventWaitHandleInvokeMapValue value;
-                    msgmap.TryRemove(msgid, out value);
-                }
-            }
-            return map;
-        }
-
-        static EventWaitHandle()
-        {
-            EventWaitHandle.timeoutmaintaining = Run(() =>
-            {
-                while (true)
-                {
-                    foreach (KeyValuePair<int, EventWaitHandleInvokeMapValue> kv in msgmap)
-                    {
-                        EventWaitHandleInvokeMapValue map = kv.Value;
-                        if (map == null || map.Timeout < 0)
-                        {
-                            continue;
-                        }
-                        Stopwatch sw = map.Stopwatch;
-                        if (sw.ElapsedMilliseconds > map.Timeout)
-                        {
-                            sw.Stop();
-
-                            EventWaitHandleInvokeMapValue value;
-                            msgmap.TryRemove(kv.Key, out value);
-
-                            var state = map.State;
-                            if (state != null)
-                            {
-                                state(EventWaitHandleInvokeMapValue.ERROR_TIMEOUT, null, null);
-                            }
-                        }
-                    }
-                    Thread.Sleep(1);
-                }
-            });
         }
 
         public static void Sleep(int millisecondsTimeout)
@@ -217,70 +138,18 @@
             }
             this.Key = key;
             this.malock = malock;
-            this.malock.Received += this.ProcessMessage;
             this.malock.Aborted += this.ProcessAbort;
+            Message.Bind(this.malock);
         }
 
         private void ProcessAbort(object sender, EventArgs e)
         {
-            foreach (KeyValuePair<int, EventWaitHandleInvokeMapValue> kv in msgmap)
-            {
-                EventWaitHandleInvokeMapValue map = kv.Value;
-                if (map == null && map.Socket != this.malock)
-                {
-                    continue;
-                }
-                else
-                {
-                    EventWaitHandleInvokeMapValue mv;
-                    msgmap.TryRemove(kv.Key, out mv);
-                }
-                var state = map.State;
-                if (state != null)
-                {
-                    state(EventWaitHandleInvokeMapValue.ERROR_ABORTED, null, null);
-                }
-            }
             lock (this.syncobj)
             {
                 if (!this.malock.Available)
                 {
                     this.enterthread = null;
                     Interlocked.Exchange(ref this.entercount, 0);
-                }
-            }
-        }
-
-        private void ProcessMessage(Message message, Stream stream)
-        {
-            EventWaitHandle.EventWaitHandleInvokeMapValue map = EventWaitHandle.GetByMap(message.Sequence);
-            if (map != null)
-            {
-                var state = map.State;
-                if (state != null)
-                {
-                    state(EventWaitHandleInvokeMapValue.ERROR_NOERROR, message, stream);
-                }
-            }
-        }
-
-        private void ProcessMessage(object sender, MalockSocketStream e)
-        {
-            Message message = null;
-            using (Stream stream = e.Stream)
-            {
-                try
-                {
-                    message = Message.Deserialize(stream);
-                }
-                catch (Exception)
-                {
-                    MalockSocket socket = e.Socket;
-                    socket.Abort();
-                }
-                if (message != null)
-                {
-                    this.ProcessMessage(message, stream);
                 }
             }
         }
@@ -366,11 +235,11 @@
 
             public void Handle(int error, Message message, Stream stream)
             {
-                if (error == EventWaitHandleInvokeMapValue.ERROR_ABORTED)
+                if (error == Mappable.ERROR_ABORTED)
                 {
                     aborted = true;
                 }
-                else if (error == EventWaitHandleInvokeMapValue.ERROR_NOERROR)
+                else if (error == Mappable.ERROR_NOERROR)
                 {
                     if (message.Command == Message.CLIENT_COMMAND_LOCK_ENTER)
                     {
@@ -450,7 +319,7 @@
 
         private static MalockSocketException NewAbortedException()
         {
-            return new MalockSocketException(EventWaitHandleInvokeMapValue.ERROR_ABORTED,
+            return new MalockSocketException(Mappable.ERROR_ABORTED,
                         "An unknown interrupt occurred in the connection between the Malock and the server");
         }
 
@@ -547,14 +416,14 @@
                 if (!this.TryInvokeAsync(this.NewMesssage(Message.CLIENT_COMMAND_GETALLINFO, -1), -1,
                     (errno, message, stream) =>
                 {
-                    if (errno == EventWaitHandleInvokeMapValue.ERROR_NOERROR)
+                    if (errno == Mappable.ERROR_NOERROR)
                     {
                         if (message.Command == Message.CLIENT_COMMAND_GETALLINFO)
                         {
                             success = HandleInfo.Fill(results, stream);
                         }
                     }
-                    else if (errno == EventWaitHandleInvokeMapValue.ERROR_ABORTED)
+                    else if (errno == Mappable.ERROR_ABORTED)
                     {
                         abort = true;
                     }
@@ -575,15 +444,15 @@
 
         private bool TryInvokeAsync(Message message, int timeout, Action<int, Message, Stream> callback, ref Exception exception)
         {
-            EventWaitHandleInvokeMapValue mapinfo = new EventWaitHandle.EventWaitHandleInvokeMapValue()
+            Mappable mapinfo = new EventWaitHandle.Mappable()
             {
-                Slot = this,
+                Handle = this,
                 State = callback,
                 Tag = null,
                 Timeout = timeout,
-                Socket = this.malock,
+                Client = this.malock,
             };
-            if (!EventWaitHandle.RegisterToMap(message.Sequence, mapinfo))
+            if (!Message.RegisterToMap(message.Sequence, mapinfo))
             {
                 exception = new InvalidOperationException("An internal error cannot add a call to a rpc-task in the map table");
                 return false;
@@ -592,7 +461,7 @@
             {
                 if (!this.malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
                 {
-                    EventWaitHandle.FromRemoveInMap(message.Sequence);
+                    Message.FromRemoveInMap(message.Sequence);
                     exception = new InvalidOperationException("The poll send returned results do not match the expected");
                     return false;
                 }
