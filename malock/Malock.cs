@@ -22,13 +22,13 @@
         /// </summary>
         public const int MaxEnterCount = 10000;
         /// <summary>
-        /// 确认周期时间
+        /// 确认流水线周期时间
         /// </summary>
-        public const int AckInterval = 500;
+        public const int AckPipelineInterval = 500;
         /// <summary>
-        /// 确认死锁所需次数
+        /// 确认流水线死锁所需次数
         /// </summary>
-        public const int AckNumberOfDeadlock = 3;
+        public const int AckPipelineDeadlockCount = 3;
 
         public static void Ngen(Assembly assembly)
         {

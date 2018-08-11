@@ -6,7 +6,7 @@
         kExit,
         kGetAllInfo,
         kAbort,
-        kAckExit,
-        kAckEnter,
+        kAckPipelineExit,
+        kAckPipelineEnter,
     }
 }

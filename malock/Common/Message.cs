@@ -21,8 +21,8 @@
         public const byte CLIENT_COMMAND_GETALLINFO = 2;
 
         public const byte CLIENT_COMMAND_HEARTBEAT = 0xfa;
-        public const byte CLIENT_COMMAND_LOCK_ACK_ENTER = 0xfb;
-        public const byte CLIENT_COMMAND_LOCK_ACK_EXIT = 0xfc;
+        public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEENTER = 0xfb;
+        public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT = 0xfc;
         public const byte CLIENT_COMMAND_TIMEOUT = 0xfe;
         public const byte CLIENT_COMMAND_ERROR = 0xff;
 

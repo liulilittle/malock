@@ -11,7 +11,7 @@
         private MalockTaskPoll malockTaskPoll = null;
         private MalockTable malockTable = null;
         private MalockStandby malockStandby = null;
-        private Dictionary<string, int> ackDeadlock = new Dictionary<string, int>();
+        private Dictionary<string, int> ackPipeline = new Dictionary<string, int>();
 
         public MalockEngine(MalockTable malockTable, string standbyMachine)
         {
@@ -61,46 +61,46 @@
             return false;
         }
 
-        public void AckEnter(MalockTaskInfo info)
+        public void AckPipelineEnter(MalockTaskInfo info)
         {
-            string key = this.GetAckKey(info);
-            lock (this.ackDeadlock)
+            string key = this.GetAckPipelineKey(info);
+            lock (this.ackPipeline)
             {
                 int count = 0;
-                if (this.ackDeadlock.TryGetValue(key, out count))
+                if (this.ackPipeline.TryGetValue(key, out count))
                 {
-                    this.ackDeadlock[key] = 0;
+                    this.ackPipeline[key] = 0;
                 }
             }
         }
 
-        private string GetAckKey(MalockTaskInfo info)
+        private string GetAckPipelineKey(MalockTaskInfo info)
         {
-            return this.GetAckKey(info.Identity, info.Key);
+            return this.GetAckPipelineKey(info.Identity, info.Key);
         }
 
-        private string GetAckKey(string identity, string key)
+        private string GetAckPipelineKey(string identity, string key)
         {
             return identity + "|" + key;
         }
 
-        public void AckExit(MalockTaskInfo info)
+        public void AckPipelineExit(MalockTaskInfo info)
         {
-            string key = this.GetAckKey(info);
-            lock (this.ackDeadlock)
+            string key = this.GetAckPipelineKey(info);
+            lock (this.ackPipeline)
             {
                 int count = 0;
-                if (!this.ackDeadlock.TryGetValue(key, out count))
+                if (!this.ackPipeline.TryGetValue(key, out count))
                 {
-                    this.ackDeadlock.Add(key, ++count);
+                    this.ackPipeline.Add(key, ++count);
                 }
                 else
                 {
-                    this.ackDeadlock[key] = ++count;
+                    this.ackPipeline[key] = ++count;
                 }
-                if (count > Malock.AckNumberOfDeadlock)
+                if (count > Malock.AckPipelineDeadlockCount)
                 {
-                    this.ackDeadlock[key] = 0;
+                    this.ackPipeline[key] = 0;
                     this.Exit(info);
                 }
             }
@@ -118,7 +118,7 @@
                 this.SendMessage(info.Socket, message);
                 this.SendMessage(malockStandby, message);
             }
-            this.AckEnter(info);
+            this.AckPipelineEnter(info);
             return true;
         }
 

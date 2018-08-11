@@ -145,7 +145,7 @@
             {
                 this.ackstatetimer = new Timer();
                 this.ackstatetimer.Tick += this.OnAckstatetimerTick;
-                this.ackstatetimer.Interval = Malock.AckInterval;
+                this.ackstatetimer.Interval = Malock.AckPipelineInterval;
                 this.ackstatetimer.Start();
             } while (false);
         }
@@ -158,12 +158,12 @@
 
         private bool TryPostAckLockStateMessage(ref Exception exception)
         {
-            byte errno = Message.CLIENT_COMMAND_LOCK_ACK_ENTER;
+            byte errno = Message.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER;
             lock (this.syncobj)
             {
                 if (this.enterthread == null)
                 {
-                    errno = Message.CLIENT_COMMAND_LOCK_ACK_EXIT;
+                    errno = Message.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT;
                 }
             }
             Message message = this.NewMesssage(errno, -1);

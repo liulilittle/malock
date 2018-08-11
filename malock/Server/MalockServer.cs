@@ -117,8 +117,8 @@
             if (message.Command == Message.CLIENT_COMMAND_LOCK_ENTER ||
                 message.Command == Message.CLIENT_COMMAND_LOCK_EXIT ||
                 message.Command == Message.CLIENT_COMMAND_GETALLINFO || 
-                message.Command == Message.CLIENT_COMMAND_LOCK_ACK_EXIT || 
-                message.Command == Message.CLIENT_COMMAND_LOCK_ACK_ENTER)
+                message.Command == Message.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT || 
+                message.Command == Message.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER)
             {
                 MalockTaskInfo info = new MalockTaskInfo();
                 switch (message.Command)
@@ -132,11 +132,11 @@
                     case Message.CLIENT_COMMAND_GETALLINFO:
                         info.Type = MalockTaskType.kGetAllInfo;
                         break;
-                    case Message.CLIENT_COMMAND_LOCK_ACK_EXIT:
-                        info.Type = MalockTaskType.kAckExit;
+                    case Message.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT:
+                        info.Type = MalockTaskType.kAckPipelineExit;
                         break;
-                    case Message.CLIENT_COMMAND_LOCK_ACK_ENTER:
-                        info.Type = MalockTaskType.kAckEnter;
+                    case Message.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER:
+                        info.Type = MalockTaskType.kAckPipelineEnter;
                         break;
                 }
                 info.Sequence = message.Sequence;
@@ -156,18 +156,22 @@
                 }
                 else if (message.Command == Message.CLIENT_COMMAND_LOCK_ENTER)
                 {
-                    if (!this.malockEngine.Enter(info))
+                    if (this.malockEngine.Enter(info))
+                    {
+                        this.malockEngine.AckPipelineEnter(info);
+                    }
+                    else
                     {
                         this.malockEngine.GetPoll().Add(socket.Identity, info);
                     }
                 }
-                else if (message.Command == Message.CLIENT_COMMAND_LOCK_ACK_EXIT)
+                else if (message.Command == Message.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT)
                 {
-                    this.malockEngine.AckExit(info); // anti-deadlock
+                    this.malockEngine.AckPipelineExit(info); // anti-deadlock
                 }
-                else if (message.Command == Message.CLIENT_COMMAND_LOCK_ACK_ENTER)
+                else if (message.Command == Message.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER)
                 {
-                    this.malockEngine.AckEnter(info);
+                    this.malockEngine.AckPipelineEnter(info);
                 }
                 else if (message.Command == Message.CLIENT_COMMAND_GETALLINFO)
                 {
