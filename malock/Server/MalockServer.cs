@@ -192,12 +192,32 @@
             {
                 MalockTable malock = this.malockEngine.GetTable();
                 malock.Exit(message.Key, message.Identity);
+                do
+                {
+                    this.malockEngine.AckPipelineExit(new MalockTaskInfo()
+                    {
+                        Key = message.Key,
+                        Identity = message.Identity,
+                    });
+                } while (false);
             }
             else if (message.Command == Message.SERVER_COMMAND_SYN_FREE)
             {
                 string[] keys;
                 MalockTable malock = this.malockEngine.GetTable();
                 malock.Exit(message.Identity, out keys);
+                do
+                {
+                    for (int i = 0; i < keys.Length; i++)
+                    {
+                        string key = keys[i];
+                        this.malockEngine.AckPipelineExit(new MalockTaskInfo()
+                        {
+                            Key = key,
+                            Identity = message.Identity,
+                        });
+                    }
+                } while (false);
             }
         }
 

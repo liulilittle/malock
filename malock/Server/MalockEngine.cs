@@ -11,7 +11,7 @@
         private MalockTaskPoll malockTaskPoll = null;
         private MalockTable malockTable = null;
         private MalockStandby malockStandby = null;
-        private Dictionary<string, int> ackPipeline = new Dictionary<string, int>();
+        private Dictionary<string, int> ackPipelineCount = new Dictionary<string, int>();
 
         public MalockEngine(MalockTable malockTable, string standbyMachine)
         {
@@ -64,12 +64,12 @@
         public void AckPipelineEnter(MalockTaskInfo info)
         {
             string key = this.GetAckPipelineKey(info);
-            lock (this.ackPipeline)
+            lock (this.ackPipelineCount)
             {
                 int count = 0;
-                if (this.ackPipeline.TryGetValue(key, out count))
+                if (this.ackPipelineCount.TryGetValue(key, out count))
                 {
-                    this.ackPipeline[key] = 0;
+                    this.ackPipelineCount[key] = 0;
                 }
             }
         }
@@ -87,20 +87,20 @@
         public void AckPipelineExit(MalockTaskInfo info)
         {
             string key = this.GetAckPipelineKey(info);
-            lock (this.ackPipeline)
+            lock (this.ackPipelineCount)
             {
                 int count = 0;
-                if (!this.ackPipeline.TryGetValue(key, out count))
+                if (!this.ackPipelineCount.TryGetValue(key, out count))
                 {
-                    this.ackPipeline.Add(key, ++count);
+                    this.ackPipelineCount.Add(key, ++count);
                 }
                 else
                 {
-                    this.ackPipeline[key] = ++count;
+                    this.ackPipelineCount[key] = ++count;
                 }
                 if (count > Malock.AckPipelineDeadlockCount)
                 {
-                    this.ackPipeline[key] = 0;
+                    this.ackPipelineCount[key] = 0;
                     this.Exit(info);
                 }
             }
@@ -115,7 +115,10 @@
             }
             using (Stream message = this.NewMessage(info.Key, info.Identity, errno, info.Sequence, info.Timeout).Serialize())
             {
-                this.SendMessage(info.Socket, message);
+                if (info.Socket != null)
+                {
+                    this.SendMessage(info.Socket, message);
+                }
                 this.SendMessage(malockStandby, message);
             }
             this.AckPipelineEnter(info);
