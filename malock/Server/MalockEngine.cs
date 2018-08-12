@@ -90,10 +90,15 @@
             string key = this.GetAckPipelineKey(info);
             lock (this.ackPipelineCount)
             {
+                bool enter = this.malockTable.IsEnter(info.Key, info.Identity);
                 int count = 0;
                 if (!this.ackPipelineCount.TryGetValue(key, out count))
                 {
                     this.ackPipelineCount.Add(key, ++count);
+                }
+                else if (!enter)
+                {
+                    this.ackPipelineCount[key] = count = 0;
                 }
                 else
                 {
