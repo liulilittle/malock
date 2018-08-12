@@ -153,8 +153,22 @@
             return lockInfos.ContainsKey(key);
         }
 
+        public virtual bool IsEnter(string key)
+        {
+            return this.InternalIsEnter(key, null, true);
+        }
+
         public virtual bool IsEnter(string key, string identity)
         {
+            return this.InternalIsEnter(key, identity, false);
+        }
+
+        private bool InternalIsEnter(string key, string identity, bool igrone)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
             lock (this.syncobj)
             {
                 LockerInfo info = GetLockerInfo(key);
@@ -164,6 +178,10 @@
                 }
                 lock (info)
                 {
+                    if (igrone)
+                    {
+                        return !info.Available;
+                    }
                     return info.Identity == identity;
                 }
             }

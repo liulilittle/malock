@@ -11,7 +11,7 @@
         private MalockTaskPoll malockTaskPoll = null;
         private MalockTable malockTable = null;
         private MalockStandby malockStandby = null;
-        private Dictionary<string, int> ackPipelineCount = new Dictionary<string, int>();
+        private Dictionary<string, int> ackPipelineCounter = new Dictionary<string, int>();
 
         public MalockEngine(MalockTable malockTable, string standbyMachine)
         {
@@ -65,12 +65,12 @@
         public void AckPipelineEnter(MalockTaskInfo info)
         {
             string key = this.GetAckPipelineKey(info);
-            lock (this.ackPipelineCount)
+            lock (this.ackPipelineCounter)
             {
                 int count = 0;
-                if (this.ackPipelineCount.TryGetValue(key, out count))
+                if (this.ackPipelineCounter.TryGetValue(key, out count))
                 {
-                    this.ackPipelineCount[key] = 0;
+                    this.ackPipelineCounter[key] = 0;
                 }
             }
         }
@@ -85,28 +85,32 @@
             return identity + "|" + key;
         }
 
-        public void AckPipelineExit(MalockTaskInfo info)
+        public void AckPipelineExit(MalockTaskInfo info) // anti-deadlock
         {
             string key = this.GetAckPipelineKey(info);
-            lock (this.ackPipelineCount)
+            lock (this.ackPipelineCounter)
             {
-                bool enter = this.malockTable.IsEnter(info.Key, info.Identity);
+                bool entering = this.malockTable.IsEnter(info.Key, info.Identity);
                 int count = 0;
-                if (!this.ackPipelineCount.TryGetValue(key, out count))
+                if (!this.ackPipelineCounter.TryGetValue(key, out count))
                 {
-                    this.ackPipelineCount.Add(key, ++count);
+                    if (entering)
+                    {
+                        this.ackPipelineCounter.Add(key, ++count);
+                    }
                 }
-                else if (!enter)
+                else if (!entering)
                 {
-                    this.ackPipelineCount[key] = count = 0;
+                    count = 0; // reset counter
+                    this.ackPipelineCounter[key] = 0;
                 }
                 else
                 {
-                    this.ackPipelineCount[key] = ++count;
+                    this.ackPipelineCounter[key] = ++count;
                 }
                 if (count > Malock.AckPipelineDeadlockCount)
                 {
-                    this.ackPipelineCount[key] = 0;
+                    this.ackPipelineCounter[key] = 0;
                     this.Exit(info);
                 }
             }
