@@ -125,6 +125,17 @@
 
         protected internal static string FromStreamInRead(BinaryReader reader)
         {
+            string s;
+            if (!Message.TryFromStreamInRead(reader, out s))
+            {
+                throw new EndOfStreamException();
+            }
+            return s;
+        }
+
+        protected internal static bool TryFromStreamInRead(BinaryReader reader, out string s)
+        {
+            s = null;
             if (reader == null)
             {
                 throw new ArgumentNullException("reader");
@@ -132,22 +143,24 @@
             Stream stream = reader.BaseStream;
             if (!Message.StreamIsReadable(stream, sizeof(short)))
             {
-                return null;
+                return false;
             }
             int len = reader.ReadInt16();
             if (len < 0)
             {
-                return null;
+                return true;
             }
             if (len == 0)
             {
-                return string.Empty;
+                s = string.Empty;
+                return true;
             }
             if (!Message.StreamIsReadable(stream, len))
             {
-                return null;
+                return false;
             }
-            return Encoding.UTF8.GetString(reader.ReadBytes(len));
+            s = Encoding.UTF8.GetString(reader.ReadBytes(len));
+            return true;
         }
 
         public static Message Deserialize(Stream stream)
@@ -169,12 +182,21 @@
                 return null;
             }
             m.Timeout = br.ReadInt32();
-            m.Key = Message.FromStreamInRead(br);
-            m.Identity = Message.FromStreamInRead(br);
+            string s;
+            if (!Message.TryFromStreamInRead(br, out s))
+            {
+                return null;
+            }
+            m.Key = s;
+            if (!Message.TryFromStreamInRead(br, out s))
+            {
+                return null;
+            }
+            m.Identity = s;
             return m;
         }
 
-        private static bool StreamIsReadable(Stream stream, int len)
+        protected internal static bool StreamIsReadable(Stream stream, int len)
         {
             if (stream == null || !stream.CanRead)
             {

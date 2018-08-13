@@ -54,11 +54,28 @@
 
         public static HandleInfo Deserialize(Stream stream)
         {
+            if (stream == null)
+            {
+                return null;
+            }
             BinaryReader br = new BinaryReader(stream);
             HandleInfo info = new HandleInfo();
+            if (!Message.StreamIsReadable(stream, sizeof(bool)))
+            {
+                return null;
+            }
             info.Available = br.ReadBoolean();
-            info.Key = Message.FromStreamInRead(br);
-            info.Identity = Message.FromStreamInRead(br);
+            string s;
+            if (!Message.TryFromStreamInRead(br, out s))
+            {
+                return null;
+            }
+            info.Key = s;
+            if (!Message.TryFromStreamInRead(br, out s))
+            {
+                return null;
+            }
+            info.Identity = s;
             return info;
         }
 
