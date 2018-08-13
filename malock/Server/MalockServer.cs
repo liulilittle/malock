@@ -27,17 +27,24 @@
             {
                 throw new ArgumentOutOfRangeException("You have specified an invalid standby server host address that is not allowed to be null or empty");
             }
-            this.onAboredHandler = this.ProcessAborted;
-            this.onReceivedHandler = this.ProcessReceived;
             this.malockEngine = new MalockEngine(new MalockTable(), standbyMachine);
             this.malockListener = new MalockSocketListener(port);
-            this.malockListener.Accept += (sender, e) =>
+            do
             {
-                e.Received += this.onReceivedHandler;
-                e.Aborted += this.onAboredHandler;
-                e.Connected += this.onConnectedHandler;
-                e.Run();
-            };
+                this.onAboredHandler = this.ProcessAborted;
+                this.onReceivedHandler = this.ProcessReceived;
+                this.malockListener.Accept += (sender, e) =>
+                {
+                    MalockSocket socket = (MalockSocket)e;
+                    lock (socket)
+                    {
+                        socket.Received += this.onReceivedHandler;
+                        socket.Aborted += this.onAboredHandler;
+                        socket.Connected += this.onConnectedHandler;
+                        socket.Run();
+                    }
+                };
+            } while (false);
             this.onConnectedHandler = (sender, e) => this.ProcessAccept(sender, (MalockSocket)sender);
         }
 
@@ -93,6 +100,12 @@
                     this.malockEngine.AckPipelineEnter(message.Identity, keys);
                 }
             }
+            lock (socket)
+            {
+                socket.Aborted -= this.onAboredHandler;
+                socket.Connected -= this.onConnectedHandler;
+                socket.Received -= this.onReceivedHandler;
+            }
         }
 
         private void ProcessReceived(object sender, MalockSocketStream e)
@@ -100,15 +113,10 @@
             Message message = null;
             using (Stream stream = e.Stream)
             {
-                try
-                {
-                    message = Message.Deserialize(e.Stream);
-                }
-                catch (Exception) { }
+                Message.TryDeserialize(stream, out message);
             }
             if (message != null)
             {
-                message.Tag = e.Socket;
                 this.ProcessMessage(e.Socket, message);
             }
         }

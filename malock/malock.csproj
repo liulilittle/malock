@@ -57,6 +57,8 @@
     <Compile Include="Monitor.cs" />
     <Compile Include="Client\EventWaitHandle.cs" />
     <Compile Include="Core\AtomicBoolean.cs" />
+    <Compile Include="NN\MalockClient.cs" />
+    <Compile Include="NN\MalockServer.cs" />
     <Compile Include="Server\IMalockSender.cs" />
     <Compile Include="Server\MalockServer.cs" />
     <Compile Include="Server\MalockSocket.cs" />

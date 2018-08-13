@@ -188,10 +188,14 @@
                 BinaryWriter bw = new BinaryWriter(ms);
                 bw.Write(0);
                 int count = 0;
-                foreach (var i in this.malockTable.GetAllLocker())
+                foreach (var locker in this.malockTable.GetAllLocker())
                 {
-                    HandleInfo handleInfo = new HandleInfo(i.Key, i.Identity, i.Available);
-                    handleInfo.Serialize(ms);
+                    lock (locker)
+                    {
+                        HandleInfo handleInfo = new HandleInfo(
+                            locker.Key, locker.Identity, locker.Available);
+                        handleInfo.Serialize(ms);
+                    }
                     count++;
                 }
                 byte[] buffer = ms.GetBuffer();

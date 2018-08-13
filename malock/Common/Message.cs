@@ -129,6 +129,11 @@
             {
                 throw new ArgumentNullException("reader");
             }
+            Stream stream = reader.BaseStream;
+            if (!Message.StreamIsReadable(stream, sizeof(short)))
+            {
+                return null;
+            }
             int len = reader.ReadInt16();
             if (len < 0)
             {
@@ -138,6 +143,10 @@
             {
                 return string.Empty;
             }
+            if (!Message.StreamIsReadable(stream, len))
+            {
+                return null;
+            }
             return Encoding.UTF8.GetString(reader.ReadBytes(len));
         }
 
@@ -145,12 +154,44 @@
         {
             BinaryReader br = new BinaryReader(stream);
             Message m = new Message();
+            if (!Message.StreamIsReadable(stream, sizeof(byte)))
+            {
+                return null;
+            }
             m.Command = br.ReadByte();
+            if (!Message.StreamIsReadable(stream, sizeof(int)))
+            {
+                return null;
+            }
             m.Sequence = br.ReadInt32();
+            if (!Message.StreamIsReadable(stream, sizeof(int)))
+            {
+                return null;
+            }
             m.Timeout = br.ReadInt32();
-            m.Key = FromStreamInRead(br);
-            m.Identity = FromStreamInRead(br);
+            m.Key = Message.FromStreamInRead(br);
+            m.Identity = Message.FromStreamInRead(br);
             return m;
+        }
+
+        private static bool StreamIsReadable(Stream stream, int len)
+        {
+            if (stream == null || !stream.CanRead)
+            {
+                return false;
+            }
+            return unchecked(stream.Position + len) <= stream.Length;
+        }
+
+        public static bool TryDeserialize(Stream stream, out Message message)
+        {
+            message = null;
+            try
+            {
+                message = Message.Deserialize(stream);
+            }
+            catch (Exception) { }
+            return message != null;
         }
 
         public static int NewId()
