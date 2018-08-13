@@ -86,7 +86,8 @@
 
         public static MalockClient NewClient(string identity, string mainuseMachine, string standbyMachine)
         {
-            return new MalockClient(identity, mainuseMachine, standbyMachine);
+            MalockClient malock = new MalockClient(identity, mainuseMachine, standbyMachine);
+            return malock;
         }
 
         public static bool Enter(EventWaitHandle handle)

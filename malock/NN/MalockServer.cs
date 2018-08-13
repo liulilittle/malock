@@ -1,6 +1,6 @@
 ﻿namespace malock.NN
 {
-    using malock.Server;
+    using global::malock.Server;
     using System;
 
     public class MalockServer

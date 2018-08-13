@@ -189,7 +189,12 @@
 
         private class Waitable : IWaitableHandler
         {
-            private ManualResetEvent signal = new ManualResetEvent(false);
+            private readonly ManualResetEvent signal = null;
+
+            public Waitable()
+            {
+                this.signal = new ManualResetEvent(false);
+            }
 
             public void Set()
             {
@@ -339,7 +344,7 @@
                 if (callback.localTaken)
                 {
                     this.enterthread = currentThread;
-                    Interlocked.Increment(ref entercount);
+                    Interlocked.Increment(ref this.entercount);
                 }
             }
             return callback.localTaken;

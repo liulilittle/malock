@@ -43,7 +43,7 @@
     <Compile Include="Auxiliary\MalockSocketAuxiliary.cs" />
     <Compile Include="Client\IWaitableHandler.cs" />
     <Compile Include="Client\HandleInfo.cs" />
-    <Compile Include="Client\MalockClient.cs" />
+    <Compile Include="Client\MalockMixClient.cs" />
     <Compile Include="Client\MalockNetworkMessage.cs" />
     <Compile Include="Client\MalockSocket.cs" />
     <Compile Include="Client\MalockSocketException.cs" />
@@ -58,6 +58,7 @@
     <Compile Include="Client\EventWaitHandle.cs" />
     <Compile Include="Core\AtomicBoolean.cs" />
     <Compile Include="NN\MalockClient.cs" />
+    <Compile Include="Client\MalockClient.cs" />
     <Compile Include="NN\MalockServer.cs" />
     <Compile Include="Server\IMalockSender.cs" />
     <Compile Include="Server\MalockServer.cs" />

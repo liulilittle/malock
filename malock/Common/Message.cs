@@ -224,7 +224,7 @@
         private static readonly ConcurrentDictionary<int, Mappable> msgmap = 
             new ConcurrentDictionary<int, Mappable>();
         private static Thread timeoutmaintaining = null;
-        private static readonly EventHandler<MalockNetworkMessage> onmessagehandler = (sender, e) =>
+        private static readonly EventHandler<MalockNetworkMessage<Message>> onmessagehandler = (sender, e) =>
         {
             Message message = e.Message;
             Mappable map = Message.GetByMap(message.Sequence);

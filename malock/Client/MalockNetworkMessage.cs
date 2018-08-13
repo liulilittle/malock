@@ -1,10 +1,9 @@
 ﻿namespace malock.Client
 {
-    using malock.Common;
     using System;
     using System.IO;
 
-    public class MalockNetworkMessage : EventArgs
+    public class MalockNetworkMessage<TMessage> : EventArgs
     {
         public Stream Stream
         {
@@ -12,7 +11,7 @@
             private set;
         }
 
-        public MalockClient Client
+        public MalockMixClient<TMessage> Client
         {
             get;
             private set;
@@ -24,28 +23,13 @@
             private set;
         }
 
-        public Message Message
+        public TMessage Message
         {
             get;
             private set;
         }
 
-        public string GetKey()
-        {
-            return this.Message.Key;
-        }
-
-        public string GetIdentity()
-        {
-            return this.Message.Identity;
-        }
-
-        public int GetCurrentSequence()
-        {
-            return this.Message.Sequence;
-        }
-
-        internal MalockNetworkMessage(MalockClient client, MalockSocket socket, Stream stream, Message message)
+        internal MalockNetworkMessage(MalockMixClient<TMessage> client, MalockSocket socket, Stream stream, TMessage message)
         {
             if (client == null)
             {
