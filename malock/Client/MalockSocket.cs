@@ -10,7 +10,7 @@
     using System.Text;
     using Interlocked = System.Threading.Interlocked;
 
-    public unsafe class MalockSocket : EventArgs
+    public unsafe class MalockSocket : EventArgs, IMalockSocket
     {
         private readonly EndPoint address = null;
         private SocketWorkContext context = null;
@@ -272,7 +272,7 @@
             }
         }
 
-        public MalockSocket(string identity, string address) : this(identity, address, Message.LINK_MODE_CLIENT)
+        public MalockSocket(string identity, string address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
         {
 
         }
@@ -282,7 +282,7 @@
 
         }
 
-        public MalockSocket(string identity, EndPoint address) : this(identity, address, Message.LINK_MODE_CLIENT)
+        public MalockSocket(string identity, EndPoint address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
         {
 
         }

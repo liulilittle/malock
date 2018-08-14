@@ -7,29 +7,18 @@
     using System.Diagnostics;
     using System.IO;
     using System.Text;
-    using Mappable = global::malock.Client.EventWaitHandle.Mappable;
     using Interlocked = System.Threading.Interlocked;
+    using Mappable = global::malock.Client.EventWaitHandle.Mappable;
     using Thread = System.Threading.Thread;
 
-    public class Message : EventArgs
+    public abstract class MalockMessage : EventArgs
     {
         private static volatile int msgseq = 0;
         private static readonly int processid = Process.GetCurrentProcess().Id;
 
-        public const byte CLIENT_COMMAND_LOCK_ENTER = 0;
-        public const byte CLIENT_COMMAND_LOCK_EXIT = 1;
-        public const byte CLIENT_COMMAND_GETALLINFO = 2;
-
-        public const byte CLIENT_COMMAND_HEARTBEAT = 0xfa;
-        public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEENTER = 0xfb;
-        public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT = 0xfc;
         public const byte CLIENT_COMMAND_TIMEOUT = 0xfe;
         public const byte CLIENT_COMMAND_ERROR = 0xff;
-
-        public const byte SERVER_COMMAND_SYN_ENTER = CLIENT_COMMAND_LOCK_ENTER;
-        public const byte SERVER_COMMAND_SYN_EXIT = CLIENT_COMMAND_LOCK_EXIT;
-        public const byte SERVER_COMMAND_SYN_LOADALLINFO = CLIENT_COMMAND_GETALLINFO;
-        public const byte SERVER_COMMAND_SYN_FREE = 0xf0;
+        public const byte CLIENT_COMMAND_HEARTBEAT = 0xfa;
 
         public const byte LINK_MODE_CLIENT = 0;
         public const byte LINK_MODE_SERVER = 1;
@@ -50,30 +39,6 @@
             set;
         }
         /// <summary>
-        /// 超时时间
-        /// </summary>
-        public int Timeout
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 同步块索引
-        /// </summary>
-        public string Key
-        {
-            get;
-            set;
-        }
-        /// <summary>
-        /// 身份标识
-        /// </summary>
-        public string Identity
-        {
-            get;
-            set;
-        }
-        /// <summary>
         /// 标记的数据
         /// </summary>
         public object Tag
@@ -82,7 +47,7 @@
             set;
         }
 
-        internal Message()
+        protected MalockMessage()
         {
 
         }
@@ -94,14 +59,52 @@
             return ms;
         }
 
-        public virtual void Serialize(Stream stream)
+        public void Serialize(Stream stream)
         {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream");
+            }
             BinaryWriter bw = new BinaryWriter(stream);
-            bw.Write(unchecked((byte)this.Command));
-            bw.Write(this.Sequence);
-            bw.Write(this.Timeout);
-            WriteStringToStream(bw, this.Key);
-            WriteStringToStream(bw, this.Identity);
+            this.Serialize(bw);
+        }
+
+        public virtual void Serialize(BinaryWriter writer)
+        {
+            if (writer == null)
+            {
+                throw new ArgumentNullException("writer");
+            }
+            writer.Write(unchecked((byte)this.Command));
+            writer.Write(this.Sequence);
+        }
+
+        protected static bool DeserializeTo(MalockMessage message, BinaryReader reader)
+        {
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+            if (reader == null)
+            {
+                throw new ArgumentNullException("reader");
+            }
+            Stream stream = reader.BaseStream;
+            if (!MalockMessage.StreamIsReadable(stream, sizeof(byte)))
+            {
+                return false;
+            }
+            message.Command = reader.ReadByte();
+            if (!MalockMessage.StreamIsReadable(stream, sizeof(int)))
+            {
+                return false;
+            }
+            message.Sequence = reader.ReadInt32();
+            if (!MalockMessage.StreamIsReadable(stream, sizeof(int)))
+            {
+                return false;
+            }
+            return true;
         }
 
         protected internal static void WriteStringToStream(BinaryWriter writer, string s)
@@ -126,7 +129,7 @@
         protected internal static string FromStreamInRead(BinaryReader reader)
         {
             string s;
-            if (!Message.TryFromStreamInRead(reader, out s))
+            if (!MalockMessage.TryFromStreamInRead(reader, out s))
             {
                 throw new EndOfStreamException();
             }
@@ -141,7 +144,7 @@
                 throw new ArgumentNullException("reader");
             }
             Stream stream = reader.BaseStream;
-            if (!Message.StreamIsReadable(stream, sizeof(short)))
+            if (!MalockMessage.StreamIsReadable(stream, sizeof(short)))
             {
                 return false;
             }
@@ -155,45 +158,12 @@
                 s = string.Empty;
                 return true;
             }
-            if (!Message.StreamIsReadable(stream, len))
+            if (!MalockMessage.StreamIsReadable(stream, len))
             {
                 return false;
             }
             s = Encoding.UTF8.GetString(reader.ReadBytes(len));
             return true;
-        }
-
-        public static Message Deserialize(Stream stream)
-        {
-            BinaryReader br = new BinaryReader(stream);
-            Message m = new Message();
-            if (!Message.StreamIsReadable(stream, sizeof(byte)))
-            {
-                return null;
-            }
-            m.Command = br.ReadByte();
-            if (!Message.StreamIsReadable(stream, sizeof(int)))
-            {
-                return null;
-            }
-            m.Sequence = br.ReadInt32();
-            if (!Message.StreamIsReadable(stream, sizeof(int)))
-            {
-                return null;
-            }
-            m.Timeout = br.ReadInt32();
-            string s;
-            if (!Message.TryFromStreamInRead(br, out s))
-            {
-                return null;
-            }
-            m.Key = s;
-            if (!Message.TryFromStreamInRead(br, out s))
-            {
-                return null;
-            }
-            m.Identity = s;
-            return m;
         }
 
         protected internal static bool StreamIsReadable(Stream stream, int len)
@@ -205,17 +175,6 @@
             return unchecked(stream.Position + len) <= stream.Length;
         }
 
-        public static bool TryDeserialize(Stream stream, out Message message)
-        {
-            message = null;
-            try
-            {
-                message = Message.Deserialize(stream);
-            }
-            catch (Exception) { }
-            return message != null;
-        }
-
         public static int NewId()
         {
             return Interlocked.Increment(ref msgseq);
@@ -224,10 +183,10 @@
         private static readonly ConcurrentDictionary<int, Mappable> msgmap = 
             new ConcurrentDictionary<int, Mappable>();
         private static Thread timeoutmaintaining = null;
-        private static readonly EventHandler<MalockNetworkMessage<Message>> onmessagehandler = (sender, e) =>
+        private static readonly EventHandler<MalockNetworkMessage> onmessagehandler = (sender, e) =>
         {
-            Message message = e.Message;
-            Mappable map = Message.GetByMap(message.Sequence);
+            MalockMessage message = e.Message;
+            Mappable map = MalockMessage.GetByMap(message.Sequence);
             if (map != null)
             {
                 var state = map.State;
@@ -240,10 +199,10 @@
         private static readonly EventHandler onabortedhandler = (sender, e) =>
         {
             MalockClient malock = (MalockClient)sender;
-            Message.Abort(malock);
+            MalockMessage.Abort(malock);
         };
 
-        static Message()
+        static MalockMessage()
         {
             timeoutmaintaining = EventWaitHandle.Run(() =>
             {

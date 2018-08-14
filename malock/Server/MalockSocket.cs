@@ -2,13 +2,14 @@
 {
     using global::malock.Auxiliary;
     using global::malock.Core;
+    using global::malock.Common;
     using System;
     using System.IO;
     using System.Net.Sockets;
     using System.Text;
     using MalockInnetSocket = global::malock.Client.MalockSocket;
 
-    public unsafe class MalockSocket : EventArgs, IMalockSender
+    public unsafe class MalockSocket : EventArgs, IMalockSocket
     {
         private readonly object syncobj = new object();
         private readonly Socket socket = null;
@@ -67,6 +68,27 @@
             set;
         }
 
+        public bool Available
+        {
+            get
+            {
+                bool localTaken = false;
+                this.connectwait.Enter(ref localTaken);
+                if (localTaken)
+                {
+                    try
+                    {
+                        return this.connected;
+                    }
+                    finally
+                    {
+                        this.connectwait.Exit();
+                    }
+                }
+                return false;
+            }
+        }
+
         private void ProcessAborted()
         {
             lock (this.syncobj)
@@ -76,6 +98,7 @@
                 {
                     MalockInnetSocket.Close(socket);
                 }
+                this.connected = false;
             }
             this.OnAborted(EventArgs.Empty);
         }
@@ -124,7 +147,7 @@
                 do
                 {
                     bool localTaken = false;
-                    connectwait.Enter(ref localTaken);
+                    this.connectwait.Enter(ref localTaken);
                     if (localTaken)
                     {
                         debarkation = this.connected;
@@ -132,7 +155,7 @@
                         {
                             this.connected = true;
                         }
-                        connectwait.Exit();
+                        this.connectwait.Exit();
                     }
                 } while (false);
                 if (!debarkation)

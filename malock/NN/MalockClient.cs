@@ -1,10 +1,9 @@
 ﻿namespace malock.NN
 {
     using global::malock.Client;
-    using global::malock.Common;
-    using MSG = global::malock.Common.Message;
+    using MSG = global::malock.Common.MalockDataNodeMessage;
 
-    public class MalockClient : MalockMixClient<Message>
+    public class MalockClient : MalockMixClient<MSG>
     {
         public MalockClient(string identity, string mainuseMachine, string standbyMachine) :
             base(identity, mainuseMachine, standbyMachine)
@@ -24,7 +23,12 @@
 
         protected override bool TryDeserializeMessage(MalockSocketStream stream, out MSG message)
         {
-            throw new System.NotImplementedException();
+            return MSG.TryDeserialize(stream.Stream, out message);
+        }
+
+        private void TryGetHostAddresses(string key)
+        {
+            
         }
     }
 }

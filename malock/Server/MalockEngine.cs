@@ -45,7 +45,7 @@
             {
                 return false;
             }
-            using (Stream message = this.NewMessage(info.Key, info.Identity, Message.CLIENT_COMMAND_LOCK_ENTER,
+            using (Stream message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER,
                 info.Sequence, info.Timeout).Serialize())
             {
                 if (this.SendMessage(info.Socket, message))
@@ -118,10 +118,10 @@
 
         public bool Exit(MalockTaskInfo info)
         {
-            byte errno = Message.CLIENT_COMMAND_LOCK_EXIT;
+            byte errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT;
             if (!this.malockTable.Exit(info.Key, info.Identity))
             {
-                errno = Message.CLIENT_COMMAND_ERROR;
+                errno = MalockMessage.CLIENT_COMMAND_ERROR;
             }
             using (Stream message = this.NewMessage(info.Key, info.Identity, errno, info.Sequence, info.Timeout).Serialize())
             {
@@ -137,7 +137,7 @@
 
         public bool Timeout(MalockTaskInfo info)
         {
-            Message message = this.NewMessage(info.Key, info.Identity, Message.CLIENT_COMMAND_TIMEOUT, info.Sequence, info.Timeout);
+            MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockMessage.CLIENT_COMMAND_TIMEOUT, info.Sequence, info.Timeout);
             this.SendMessage(info.Socket, message);
             return true;
         }
@@ -155,7 +155,7 @@
                 this.malockTable.FreeKeyCollection(info.Identity, out keys);
                 this.AckPipelineEnter(info.Identity, keys);
             } while (false);
-            Message message = this.NewMessage(info.Key, info.Identity, Message.SERVER_COMMAND_SYN_FREE, info.Sequence, -1);
+            MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.SERVER_COMMAND_SYN_FREE, info.Sequence, -1);
             this.SendMessage(this.malockStandby, message);
             return true;
         }
@@ -203,17 +203,17 @@
                 {
                     *(int*)pinned = count;
                 }
-                Message message = this.NewMessage(info.Key, info.Identity, Message.CLIENT_COMMAND_GETALLINFO, info.Sequence, -1);
+                MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, info.Sequence, -1);
                 return this.SendMessage(info.Socket, message, buffer, 0, Convert.ToInt32(ms.Position));
             }
         }
 
-        private bool SendMessage(IMalockSender socket, Message message)
+        private bool SendMessage(IMalockSocket socket, MalockMessage message)
         {
             return this.SendMessage(socket, message, null, 0, 0);
         }
 
-        private bool SendMessage(IMalockSender socket, Stream stream)
+        private bool SendMessage(IMalockSocket socket, Stream stream)
         {
             if (socket == null || stream == null)
             {
@@ -223,7 +223,7 @@
             return socket.Send(ms.GetBuffer(), 0, Convert.ToInt32(ms.Position));
         }
 
-        private bool SendMessage(IMalockSender socket, Message message, byte[] buffer, int ofs, int len)
+        private bool SendMessage(IMalockSocket socket, MalockMessage message, byte[] buffer, int ofs, int len)
         {
             if (socket == null || message == null)
             {
@@ -239,9 +239,9 @@
             }
         }
 
-        private Message NewMessage(string key, string identity, byte command, int sequence, int timeout)
+        private MalockMessage NewMessage(string key, string identity, byte command, int sequence, int timeout)
         {
-            Message message = new Message();
+            MalockDataNodeMessage message = new MalockDataNodeMessage();
             message.Key = key;
             message.Command = command;
             message.Sequence = sequence;

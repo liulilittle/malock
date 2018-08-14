@@ -5,7 +5,7 @@
     using System.Collections.Generic;
     using System.IO;
 
-    public class HandleInfo
+    public sealed class HandleInfo
     {
         public string Key
         {
@@ -32,46 +32,58 @@
 
         internal HandleInfo(string key, string identity, bool available)
         {
+            if (key == null)
+            {
+                throw new ArgumentNullException("key");
+            }
+            if (key.Length <= 0)
+            {
+                throw new ArgumentOutOfRangeException("key");
+            }
             this.Key = key;
             this.Identity = identity;
             this.Available = available;
         }
 
-        public virtual Stream Serialize()
+        public Stream Serialize()
         {
             MemoryStream ms = new MemoryStream();
             this.Serialize(ms);
             return ms;
         }
 
-        public virtual void Serialize(Stream stream)
+        public void Serialize(Stream stream)
         {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream");
+            }
             BinaryWriter bw = new BinaryWriter(stream);
             bw.Write(this.Available);
-            Message.WriteStringToStream(bw, this.Key);
-            Message.WriteStringToStream(bw, this.Identity);
+            MalockMessage.WriteStringToStream(bw, this.Key);
+            MalockMessage.WriteStringToStream(bw, this.Identity);
         }
 
         public static HandleInfo Deserialize(Stream stream)
         {
             if (stream == null)
             {
-                return null;
+                throw new ArgumentNullException("stream");
             }
             BinaryReader br = new BinaryReader(stream);
             HandleInfo info = new HandleInfo();
-            if (!Message.StreamIsReadable(stream, sizeof(bool)))
+            if (!MalockMessage.StreamIsReadable(stream, sizeof(bool)))
             {
                 return null;
             }
             info.Available = br.ReadBoolean();
             string s;
-            if (!Message.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStreamInRead(br, out s))
             {
                 return null;
             }
             info.Key = s;
-            if (!Message.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStreamInRead(br, out s))
             {
                 return null;
             }
@@ -81,9 +93,13 @@
 
         public static bool Fill(IList<HandleInfo> s, Stream stream)
         {
-            if (s == null || stream == null)
+            if (stream == null)
             {
-                return false;
+                throw new ArgumentNullException("stream");
+            }
+            if (s == null)
+            {
+                throw new ArgumentNullException("s");
             }
             try
             {

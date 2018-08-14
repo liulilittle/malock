@@ -1,20 +1,23 @@
 ﻿namespace malock.Client
 {
+    using global::malock.Common;
     using global::malock.Core;
     using System;
+    using MSG = global::malock.Common.MalockDataNodeMessage;
 
     public abstract class MalockMixClient<TMessage> : EventArgs
+        where TMessage : MalockMessage
     {
         private MalockSocket[] sockets = new MalockSocket[2];
         private MalockSocket preferred = null; // 首选服务器索引
         private DateTime firsttime = DateTime.MinValue;
         private readonly object syncobj = new object();
-        private readonly MixEvent<EventHandler<MalockNetworkMessage<TMessage>>> messageevents = new MixEvent<EventHandler<MalockNetworkMessage<TMessage>>>();
+        private readonly MixEvent<EventHandler<MalockNetworkMessage>> messageevents = new MixEvent<EventHandler<MalockNetworkMessage>>();
         private readonly MixEvent<EventHandler> abortedevents = new MixEvent<EventHandler>();
 
         private const int BESTMAXCONNECTTIME = 1000;
 
-        public virtual event EventHandler<MalockNetworkMessage<TMessage>> Message
+        public virtual event EventHandler<MalockNetworkMessage> Message
         {
             add
             {
@@ -152,7 +155,17 @@
             }
         }
 
-        protected abstract bool TryDeserializeMessage(MalockSocketStream stream, out TMessage message);
+        protected virtual bool TryDeserializeMessage(MalockSocketStream stream, out TMessage message)
+        {
+            MSG msg;
+            if (!MSG.TryDeserialize(stream.Stream, out msg))
+            {
+                message = default(TMessage);
+                return false;
+            }
+            message = (TMessage)(object)msg;
+            return true;
+        }
 
         protected virtual void OnAborted(EventArgs e)
         {

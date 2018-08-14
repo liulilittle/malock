@@ -12,17 +12,17 @@
 
         private class SpinLockWaitable : IWaitableHandler
         {
-            private volatile int signal = 0;
+            private volatile int signal = 0x00;
             private bool reduce = false;
 
             public void Close()
             {
-                Interlocked.CompareExchange(ref signal, 0, 1);
+                this.Reset();
             }
 
             public void Set()
             {
-                Interlocked.CompareExchange(ref signal, 1, 0);
+                Interlocked.CompareExchange(ref signal, 0x01, 0x00);
             }
 
             public bool WaitOne()
@@ -41,7 +41,7 @@
                 while (millisecondsTimeout == -1 ||
                     stopwatch.ElapsedMilliseconds < millisecondsTimeout)
                 {
-                    if (Interlocked.CompareExchange(ref signal, 0, 1) == 1)
+                    if (Interlocked.CompareExchange(ref this.signal, 0x00, 0x00) != 0x00)
                     {
                         return true;
                     }
@@ -55,7 +55,7 @@
 
             public void Reset()
             {
-                this.Close();
+                Interlocked.CompareExchange(ref signal, 0x00, 0x01);
             }
         }
 
@@ -82,7 +82,15 @@
             }
         }
 
-        public SpinLock(string key, MalockClient malock) : this(key, malock, true)
+        public static bool DefaultReduce
+        {
+            get
+            {
+                return true;
+            }
+        }
+
+        public SpinLock(string key, MalockClient malock) : this(key, malock, SpinLock.DefaultReduce)
         {
 
         }

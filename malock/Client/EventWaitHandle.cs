@@ -22,7 +22,7 @@
                 set;
             }
 
-            public Action<int, Message, Stream> State
+            public Action<int, MalockMessage, Stream> State
             {
                 get;
                 set;
@@ -140,7 +140,7 @@
             this.Key = key;
             this.malock = malock;
             this.malock.Aborted += this.ProcessAbort;
-            Message.Bind(this.malock);
+            MalockMessage.Bind(this.malock);
             do
             {
                 this.ackstatetimer = new Timer();
@@ -158,15 +158,15 @@
 
         private bool TryPostAckLockStateMessage(ref Exception exception)
         {
-            byte errno = Message.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER;
+            byte errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER;
             lock (this.syncobj)
             {
                 if (this.enterthread == null)
                 {
-                    errno = Message.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT;
+                    errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT;
                 }
             }
-            Message message = this.NewMesssage(errno, -1);
+            MalockMessage message = this.NewMesssage(errno, -1);
             return this.TryPostMessage(message, ref exception);
         }
 
@@ -266,7 +266,7 @@
                 return this.handle;
             }
 
-            public void Handle(int error, Message message, Stream stream)
+            public void Handle(int error, MalockMessage message, Stream stream)
             {
                 if (error == Mappable.ERROR_ABORTED)
                 {
@@ -274,7 +274,7 @@
                 }
                 else if (error == Mappable.ERROR_NOERROR)
                 {
-                    if (message.Command == Message.CLIENT_COMMAND_LOCK_ENTER)
+                    if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER)
                     {
                         this.localTaken = true;
                     }
@@ -367,17 +367,17 @@
             return localTaken;
         }
 
-        private bool TryPostEnterMessage(int millisecondsTimeout, Action<int, Message, Stream> callback,
+        private bool TryPostEnterMessage(int millisecondsTimeout, Action<int, MalockMessage, Stream> callback,
             ref Exception exception)
         {
-            byte cmd = Message.CLIENT_COMMAND_LOCK_ENTER;
-            Message message = this.NewMesssage(cmd, millisecondsTimeout);
+            byte cmd = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER;
+            MalockMessage message = this.NewMesssage(cmd, millisecondsTimeout);
             return this.TryInvokeAsync(message, millisecondsTimeout, callback, ref exception);
         }
 
         private bool TryPostExitMessage(ref Exception exception)
         {
-            Message message = this.NewMesssage(Message.CLIENT_COMMAND_LOCK_EXIT, -1);
+            MalockMessage message = this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT, -1);
             return this.TryPostMessage(message, ref exception);
         }
 
@@ -412,10 +412,10 @@
             return true;
         }
 
-        private Message NewMesssage(byte command, int timeout)
+        private MalockMessage NewMesssage(byte command, int timeout)
         {
-            Message message = new Message();
-            message.Sequence = Message.NewId();
+            MalockDataNodeMessage message = new MalockDataNodeMessage();
+            message.Sequence = MalockMessage.NewId();
             message.Key = this.Key;
             message.Command = command;
             message.Timeout = timeout;
@@ -443,12 +443,12 @@
             {
                 bool success = false;
                 bool abort = false;
-                if (!this.TryInvokeAsync(this.NewMesssage(Message.CLIENT_COMMAND_GETALLINFO, -1), -1,
+                if (!this.TryInvokeAsync(this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, -1), -1,
                     (errno, message, stream) =>
                 {
                     if (errno == Mappable.ERROR_NOERROR)
                     {
-                        if (message.Command == Message.CLIENT_COMMAND_GETALLINFO)
+                        if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO)
                         {
                             success = HandleInfo.Fill(results, stream);
                         }
@@ -472,13 +472,13 @@
             }
         }
 
-        private bool TryPostMessage(Message message, ref Exception exception)
+        private bool TryPostMessage(MalockMessage message, ref Exception exception)
         {
             using (MemoryStream ms = (MemoryStream)message.Serialize())
             {
                 if (!this.malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
                 {
-                    Message.FromRemoveInMap(message.Sequence);
+                    MalockMessage.FromRemoveInMap(message.Sequence);
                     exception = new InvalidOperationException("The poll send returned results do not match the expected");
                     return false;
                 }
@@ -486,7 +486,7 @@
             return true;
         }
 
-        private bool TryInvokeAsync(Message message, int timeout, Action<int, Message, Stream> callback, ref Exception exception)
+        private bool TryInvokeAsync(MalockMessage message, int timeout, Action<int, MalockMessage, Stream> callback, ref Exception exception)
         {
             Mappable mapinfo = new EventWaitHandle.Mappable()
             {
@@ -496,7 +496,7 @@
                 Timeout = timeout,
                 Client = this.malock,
             };
-            if (!Message.RegisterToMap(message.Sequence, mapinfo))
+            if (!MalockMessage.RegisterToMap(message.Sequence, mapinfo))
             {
                 exception = new InvalidOperationException("An internal error cannot add a call to a rpc-task in the map table");
                 return false;

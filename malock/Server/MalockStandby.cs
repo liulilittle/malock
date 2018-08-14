@@ -8,10 +8,29 @@
     using MalockInnetSocket = global::malock.Client.MalockSocket;
     using MalockInnetSocketStream = global::malock.Client.MalockSocketStream;
 
-    public class MalockStandby : IMalockSender
+    public class MalockStandby : IMalockSocket
     {
         private readonly MalockInnetSocket socket = null;
         private readonly MalockEngine engine = null;
+
+        public object Tag
+        {
+            get;
+            set;
+        }
+
+        public bool Available
+        {
+            get
+            {
+                var s = this.socket;
+                if (s == null)
+                {
+                    return false;
+                }
+                return s.Available;
+            }
+        }
 
         public MalockStandby(MalockEngine engine, string address)
         {
@@ -20,14 +39,14 @@
                 throw new ArgumentNullException("engine");
             }
             this.engine = engine;
-            this.socket = new MalockInnetSocket(string.Format("standby{0}", Environment.TickCount), address, Message.LINK_MODE_SERVER);
+            this.socket = new MalockInnetSocket(string.Format("standby{0}", Environment.TickCount), address, MalockMessage.LINK_MODE_SERVER);
             this.socket.Received += this.OnReceived;
             this.socket.Run();
         }
 
         public bool Send(byte[] buffer, int ofs, int len)
         {
-            return socket.Send(buffer, ofs, len);
+            return this.socket.Send(buffer, ofs, len);
         }
 
         private void LoadAllInfo(Stream stream)
@@ -52,13 +71,13 @@
             }
         }
 
-        private void Exit(Message message)
+        private void Exit(MalockDataNodeMessage message)
         {
             MalockTable malock = this.engine.GetTable();
             malock.Exit(message.Key, message.Identity);
         }
 
-        private void Enter(Message message)
+        private void Enter(MalockDataNodeMessage message)
         {
             MalockTable malock = this.engine.GetTable();
             malock.Enter(message.Key, message.Identity);
@@ -66,12 +85,12 @@
 
         private void OnReceived(object sender, MalockInnetSocketStream e)
         {
-            Message message = null;
+            MalockDataNodeMessage message = null;
             using (Stream stream = e.Stream)
             {
                 try
                 {
-                    message = Message.Deserialize(e.Stream);
+                    message = MalockDataNodeMessage.Deserialize(e.Stream);
                 }
                 catch (Exception)
                 {
@@ -80,20 +99,25 @@
                 }
                 if (message != null)
                 {
-                    if (message.Command == Message.SERVER_COMMAND_SYN_LOADALLINFO)
+                    if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
                     {
                         this.LoadAllInfo(stream);
                     }
-                    else if (message.Command == Message.SERVER_COMMAND_SYN_ENTER)
+                    else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_ENTER)
                     {
                         this.Enter(message);
                     }
-                    else if (message.Command == Message.SERVER_COMMAND_SYN_EXIT)
+                    else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_EXIT)
                     {
                         this.Exit(message);
                     }
                 }
             }
+        }
+
+        public void Abort()
+        {
+            this.socket.Abort();
         }
     }
 }

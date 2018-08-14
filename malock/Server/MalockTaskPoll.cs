@@ -5,13 +5,14 @@
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading;
+    using MalockTaskTable = System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Generic.LinkedList<MalockTaskInfo>>;
     using Runnable = global::malock.Client.EventWaitHandle;
 
-    public class MalockTaskPoll
+    public sealed class MalockTaskPoll
     {
-        private readonly ConcurrentDictionary<string, IList<MalockTaskInfo>> malockTasks = null;
-        private readonly MalockEngine malockEngine = null;
-        private readonly Thread malockWorkThread = null;
+        private readonly ConcurrentDictionary<MalockTaskType, MalockTaskTable> tables = null;
+        private readonly MalockEngine engine = null;
+        private readonly Thread workthread = null;
 
         public MalockTaskPoll(MalockEngine engine)
         {
@@ -19,53 +20,58 @@
             {
                 throw new ArgumentNullException("engine");
             }
-            this.malockTasks = new ConcurrentDictionary<string, IList<MalockTaskInfo>>();
-            this.malockEngine = engine;
-            this.malockWorkThread = Runnable.Run(()=> 
+            this.tables = new ConcurrentDictionary<MalockTaskType, MalockTaskTable>();
+            this.engine = engine;
+            this.workthread = Runnable.Run(()=> 
             {
                 while (true)
                 {
-                    this.Handle();
+                    foreach (var kv in this.tables)
+                    {
+                        this.Handle(kv.Key, kv.Value);
+                    }
                     Thread.Sleep(1);
                 }
             });
         }
 
-        private void Handle()
+        private void Handle(MalockTaskType type, MalockTaskTable tables)
         {
-            foreach (var kv in this.malockTasks)
+            foreach (var kv in tables)
             {
-                IList<MalockTaskInfo> tasks = kv.Value;
+                LinkedList<MalockTaskInfo> tasks = kv.Value;
                 MalockTaskInfo info = null;
+                LinkedListNode<MalockTaskInfo> node = null;
                 lock (tasks)
                 {
-                    if (tasks.Count <= 0)
+                    node = tasks.First;
+                    if (node == null)
                     {
                         continue;
                     }
-                    else
-                    {
-                        info = tasks[0];
-                    }
+                    info = node.Value;
                 }
                 bool success = false;
                 Stopwatch sw = info.Stopwatch;
                 if (sw != null && info.Timeout != -1 && sw.ElapsedMilliseconds > info.Timeout)
                 {
-                    success = this.malockEngine.Timeout(info);
+                    success = this.engine.Timeout(info);
                 }
                 else
                 {
-                    switch (info.Type)
+                    switch (type)
                     {
                         case MalockTaskType.kEnter:
-                            success = this.malockEngine.Enter(info);
+                            success = this.engine.Enter(info);
                             break;
                         case MalockTaskType.kExit:
-                            success = this.malockEngine.Exit(info);
+                            success = this.engine.Exit(info);
                             break;
                         case MalockTaskType.kAbort:
-                            success = this.malockEngine.Abort(info);
+                            success = this.engine.Abort(info);
+                            break;
+                        case MalockTaskType.kGetAllInfo:
+                            success = this.engine.GetAllInfo(info);
                             break;
                     }
                 }
@@ -73,9 +79,9 @@
                 {
                     lock (tasks)
                     {
-                        if (tasks.Count > 0)
+                        if (node.List != null)
                         {
-                            tasks.RemoveAt(0);
+                            tasks.Remove(node);
                         }
                     }
                 }
@@ -84,38 +90,56 @@
 
         public bool Remove(string identity)
         {
-            lock (this.malockTasks)
+            lock (this.tables)
             {
-                IList<MalockTaskInfo> tasks;
-                return this.malockTasks.TryRemove(identity, out tasks);
+                LinkedList<MalockTaskInfo> tasks;
+                foreach (MalockTaskTable tables in this.tables.Values)
+                {
+                    tables.TryRemove(identity, out tasks);
+                }
+                return true;
             }
         }
 
-        public void Add(string identity, MalockTaskInfo info)
+        private MalockTaskTable GetTable(MalockTaskType type)
         {
-            this.Insert(-1, identity, info);
+            lock (this.tables)
+            {
+                ConcurrentDictionary<string, LinkedList<MalockTaskInfo>> table;
+                if (!this.tables.TryGetValue(type, out table))
+                {
+                    table = new ConcurrentDictionary<string, LinkedList<MalockTaskInfo>>();
+                    this.tables.TryAdd(type, table);
+                }
+                return table;
+            }
         }
 
-        public void Insert(int position, string identity, MalockTaskInfo info)
+        private MalockTaskTable RemoveTable(MalockTaskType type)
         {
-            lock (this.malockTasks)
+            lock (this.tables)
             {
-                IList<MalockTaskInfo> tasks;
-                if (!this.malockTasks.TryGetValue(identity, out tasks))
+                MalockTaskTable table;
+                this.tables.TryRemove(type, out table);
+                return table;
+            }
+        }
+
+        public void Add(MalockTaskInfo info)
+        {
+            LinkedList<MalockTaskInfo> tasks;
+            string identity = info.Identity;
+            lock (this.tables)
+            {
+                MalockTaskTable tables = this.GetTable(info.Type);
+                if (!tables.TryGetValue(identity, out tasks))
                 {
-                    tasks = new List<MalockTaskInfo>();
-                    this.malockTasks.TryAdd(identity, tasks);
+                    tasks = new LinkedList<MalockTaskInfo>();
+                    tables.TryAdd(identity, tasks);
                 }
                 lock (tasks)
                 {
-                    if (position < 0)
-                    {
-                        tasks.Add(info);
-                    }
-                    else
-                    {
-                        tasks.Insert(position, info);
-                    }
+                    tasks.AddLast(info);
                 }
             }
         }
