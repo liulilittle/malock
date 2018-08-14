@@ -59,10 +59,12 @@
     <Compile Include="Monitor.cs" />
     <Compile Include="Client\EventWaitHandle.cs" />
     <Compile Include="Core\AtomicBoolean.cs" />
-    <Compile Include="NN\MalockClient.cs" />
+    <Compile Include="NN\HostEntry.cs" />
+    <Compile Include="NN\Nns.cs" />
     <Compile Include="Client\MalockClient.cs" />
-    <Compile Include="NN\MalockServer.cs" />
+    <Compile Include="NN\NnsServer.cs" />
     <Compile Include="Common\IMalockSocket.cs" />
+    <Compile Include="NN\NnsError.cs" />
     <Compile Include="Server\MalockServer.cs" />
     <Compile Include="Server\MalockSocket.cs" />
     <Compile Include="Server\MalockSocketListener.cs" />

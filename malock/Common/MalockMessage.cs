@@ -15,9 +15,9 @@
         private static volatile int msgseq = 0;
         private static readonly int processid = Process.GetCurrentProcess().Id;
 
-        public const byte CLIENT_COMMAND_TIMEOUT = 0xfe;
-        public const byte CLIENT_COMMAND_ERROR = 0xff;
-        public const byte CLIENT_COMMAND_HEARTBEAT = 0xfa;
+        public const byte COMMON_COMMAND_TIMEOUT = 0xfe;
+        public const byte COMMON_COMMAND_ERROR = 0xff;
+        public const byte COMMON_COMMAND_HEARTBEAT = 0xfa;
 
         public const byte LINK_MODE_CLIENT = 0;
         public const byte LINK_MODE_SERVER = 1;
@@ -340,7 +340,7 @@
             {
                 if (!malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
                 {
-                    exception = new InvalidOperationException("The poll send returned results do not match the expected");
+                    exception = new InvalidOperationException("The malock send returned results do not match the expected");
                     return false;
                 }
             }

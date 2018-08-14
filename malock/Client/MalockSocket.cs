@@ -172,9 +172,12 @@
 
             private void OnReceive(MemoryStream stream)
             {
-                if (stream.Position < stream.Length)
+                using (stream)
                 {
-                    malock.OnReceive(new MalockSocketStream(malock, stream));
+                    if (stream.Position < stream.Length)
+                    {
+                        malock.OnReceive(new MalockSocketStream(malock, stream));
+                    }
                 }
             }
 

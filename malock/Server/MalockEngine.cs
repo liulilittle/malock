@@ -121,7 +121,7 @@
             byte errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT;
             if (!this.malockTable.Exit(info.Key, info.Identity))
             {
-                errno = MalockMessage.CLIENT_COMMAND_ERROR;
+                errno = MalockMessage.COMMON_COMMAND_ERROR;
             }
             using (Stream message = this.NewMessage(info.Key, info.Identity, errno, info.Sequence, info.Timeout).Serialize())
             {
@@ -137,7 +137,7 @@
 
         public bool Timeout(MalockTaskInfo info)
         {
-            MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockMessage.CLIENT_COMMAND_TIMEOUT, info.Sequence, info.Timeout);
+            MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockMessage.COMMON_COMMAND_TIMEOUT, info.Sequence, info.Timeout);
             this.SendMessage(info.Socket, message);
             return true;
         }

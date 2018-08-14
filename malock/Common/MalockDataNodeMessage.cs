@@ -12,9 +12,9 @@
         public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEENTER = 0xfb;
         public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT = 0xfc;
 
-        public const byte SERVER_COMMAND_SYN_ENTER = CLIENT_COMMAND_LOCK_ENTER;
-        public const byte SERVER_COMMAND_SYN_EXIT = CLIENT_COMMAND_LOCK_EXIT;
-        public const byte SERVER_COMMAND_SYN_LOADALLINFO = CLIENT_COMMAND_GETALLINFO;
+        public const byte SERVER_COMMAND_SYN_ENTER = 0x00;
+        public const byte SERVER_COMMAND_SYN_EXIT = 0x01;
+        public const byte SERVER_COMMAND_SYN_LOADALLINFO = 0x02;
         public const byte SERVER_COMMAND_SYN_FREE = 0xf0;
 
         /// <summary>

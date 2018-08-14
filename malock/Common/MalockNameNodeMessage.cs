@@ -5,7 +5,9 @@
 
     public sealed class MalockNameNodeMessage : MalockMessage
     {
-        public const byte CLIENT_COMMAND_QUERYKEYINFO = 0x01;
+        public const byte CLIENT_COMMAND_QUERYHOSTENTRYINFO = 0x01;
+        public const byte CLIENT_COMMAND_DUMPHOSTENTRYINFO = 0x02;
+        public const byte SERVER_COMMAND_SYN_HOSTENTRYINFO = 0x03;
 
         public string Key
         {
