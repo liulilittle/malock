@@ -8,7 +8,7 @@
 
     public class MalockNetworkMessage : EventArgs
     {
-        private readonly object socket = null;
+        private readonly IMalockSocket socket = null;
 
         public Stream Stream
         {
@@ -48,7 +48,12 @@
             return this.socket as MalockServerSocket;
         }
 
-        protected MalockNetworkMessage(object socket, Stream stream, MalockMessage message)
+        public IMalockSocket GetRawSocket()
+        {
+            return this.socket;
+        }
+
+        protected MalockNetworkMessage(IMalockSocket socket, Stream stream, MalockMessage message)
         {
             if (socket == null)
             {
