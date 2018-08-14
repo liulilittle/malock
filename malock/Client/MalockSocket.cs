@@ -272,22 +272,22 @@
             }
         }
 
-        public MalockSocket(string identity, string address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
+        internal MalockSocket(string identity, string address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
         {
 
         }
 
-        public MalockSocket(string identity, string address, int linkMode) : this(identity, Ipep.ToIpep(address), linkMode)
+        internal MalockSocket(string identity, string address, int linkMode) : this(identity, Ipep.ToIpep(address), linkMode)
         {
 
         }
 
-        public MalockSocket(string identity, EndPoint address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
+        internal MalockSocket(string identity, EndPoint address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
         {
 
         }
 
-        public MalockSocket(string identity, EndPoint address, int linkMode)
+        internal MalockSocket(string identity, EndPoint address, int linkMode)
         {
             if (address == null)
             {

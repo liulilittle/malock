@@ -1,7 +1,8 @@
 ﻿namespace malock.NN
 {
     using global::malock.Client;
-    using MSG = global::malock.Common.MalockDataNodeMessage;
+    using MSG = global::malock.Common.MalockNameNodeMessage;
+    using global::malock.Common;
 
     public class MalockClient : MalockMixClient<MSG>
     {
@@ -26,9 +27,18 @@
             return MSG.TryDeserialize(stream.Stream, out message);
         }
 
-        private void TryGetHostAddresses(string key)
+        private void QueryKeyInfoAsync(string key) 
         {
-            
+            this.NewMessage(key, MSG.CLIENT_COMMAND_QUERYKEYINFO);
+        }
+
+        private MSG NewMessage(string key, byte command)
+        {
+            MSG message = new MSG();
+            message.Command = command;
+            message.Sequence = MSG.NewId();
+            message.Key = key;
+            return message;
         }
     }
 }

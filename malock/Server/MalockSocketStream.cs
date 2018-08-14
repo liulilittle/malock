@@ -3,7 +3,7 @@
     using System;
     using System.IO;
 
-    public class MalockSocketStream : EventArgs
+    public sealed class MalockSocketStream : EventArgs
     {
         public Stream Stream
         {
@@ -17,7 +17,7 @@
             private set;
         }
 
-        public MalockSocketStream(MalockSocket socket, Stream stream)
+        internal MalockSocketStream(MalockSocket socket, Stream stream)
         {
             if (socket == null)
             {

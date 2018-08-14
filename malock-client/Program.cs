@@ -10,11 +10,10 @@
     {
         static void Main(string[] args)
         {
-            AppDomain.CurrentDomain.FirstChanceException += CurrentDomain_FirstChanceException;
-            MalockClient client = Malock.NewClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
-            client.Ready += delegate
+            MalockClient malock = Malock.NewClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
+            malock.Ready += delegate
             {
-                Monitor m = new Monitor("OMFG", client);
+                Monitor m = new Monitor("OMFG", malock);
                 int num = 0;
                 for (int i = 0; i < 5; i++)
                 {
@@ -42,14 +41,6 @@
                 }
             };
             Console.ReadKey(false);
-        }
-
-        private static void CurrentDomain_FirstChanceException(object sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs e)
-        {
-            if (e.Exception is ArgumentNullException)
-            {
-
-            }
         }
     }
 }

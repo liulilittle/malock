@@ -3,7 +3,7 @@
     using System;
     using System.Diagnostics;
 
-    public class MalockTaskInfo : EventArgs
+    public sealed class MalockTaskInfo : EventArgs
     {
         public MalockTaskType Type { get; set; }
 
@@ -18,5 +18,10 @@
         public Stopwatch Stopwatch { get; set; }
 
         public MalockSocket Socket { get; set; }
+
+        internal MalockTaskInfo()
+        {
+
+        }
     }
 }

@@ -6,7 +6,7 @@
     using MalockClientSocket = global::malock.Client.MalockSocket;
     using MalockServerSocket = global::malock.Server.MalockSocket;
 
-    public class MalockNetworkMessage : EventArgs
+    public abstract class MalockNetworkMessage : EventArgs
     {
         private readonly IMalockSocket socket = null;
 
@@ -73,8 +73,8 @@
         }
     }
 
-    public class MalockNetworkMessage<TMessage> : MalockNetworkMessage
-    where TMessage : MalockMessage
+    public sealed class MalockNetworkMessage<TMessage> : MalockNetworkMessage 
+        where TMessage : MalockMessage
     {
         public MalockMixClient<TMessage> Client
         {
@@ -88,7 +88,7 @@
             private set;
         }
 
-        public MalockNetworkMessage(MalockMixClient<TMessage> client, IMalockSocket socket, Stream stream, TMessage message)
+        internal MalockNetworkMessage(MalockMixClient<TMessage> client, IMalockSocket socket, Stream stream, TMessage message)
             : base(socket, stream, message)
         {
             if (client == null)

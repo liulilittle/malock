@@ -8,7 +8,6 @@
     using System.IO;
     using System.Text;
     using Interlocked = System.Threading.Interlocked;
-    using Mappable = global::malock.Client.EventWaitHandle.Mappable;
     using Thread = System.Threading.Thread;
 
     public abstract class MalockMessage : EventArgs
@@ -47,7 +46,7 @@
             set;
         }
 
-        protected MalockMessage()
+        internal MalockMessage()
         {
 
         }
@@ -180,7 +179,7 @@
             return Interlocked.Increment(ref msgseq);
         }
 
-        private static readonly ConcurrentDictionary<int, Mappable> msgmap = 
+        private static readonly ConcurrentDictionary<int, Mappable> msgmap =
             new ConcurrentDictionary<int, Mappable>();
         private static Thread timeoutmaintaining = null;
         private static readonly EventHandler<MalockNetworkMessage> onmessagehandler = (sender, e) =>
@@ -325,6 +324,94 @@
                     }
                 }
             }
+        }
+
+        internal static bool TryPostMessage(IMalockSocket malock, MalockMessage message, ref Exception exception)
+        {
+            if (malock == null)
+            {
+                throw new ArgumentNullException("malock");
+            }
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+            using (MemoryStream ms = (MemoryStream)message.Serialize())
+            {
+                if (!malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
+                {
+                    exception = new InvalidOperationException("The poll send returned results do not match the expected");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        internal class Mappable
+        {
+            public const int ERROR_TIMEOUT = 2;
+            public const int ERROR_ABORTED = 1;
+            public const int ERROR_NOERROR = 0;
+
+            public Action<int, MalockMessage, Stream> State
+            {
+                get;
+                set;
+            }
+
+            public Stopwatch Stopwatch
+            {
+                get;
+                private set;
+            }
+
+            public int Timeout
+            {
+                get;
+                set;
+            }
+
+            public IMalockSocket Client
+            {
+                get;
+                set;
+            }
+
+            public object Tag
+            {
+                get;
+                set;
+            }
+
+            public Mappable()
+            {
+                this.Stopwatch = new Stopwatch();
+            }
+        }
+
+        internal static bool TryInvokeAsync(IMalockSocket malock, MalockMessage message, int timeout, Action<int, MalockMessage, Stream> callback, ref Exception exception)
+        {
+            if (malock == null)
+            {
+                throw new ArgumentNullException("malock");
+            }
+            if (message == null)
+            {
+                throw new ArgumentNullException("message");
+            }
+            Mappable mapinfo = new Mappable()
+            {
+                State = callback,
+                Tag = null,
+                Timeout = timeout,
+                Client = malock,
+            };
+            if (!MalockMessage.RegisterToMap(message.Sequence, mapinfo))
+            {
+                exception = new InvalidOperationException("An internal error cannot add a call to a rpc-task in the map table");
+                return false;
+            }
+            return TryPostMessage(malock, message, ref exception);
         }
     }
 }

@@ -5,7 +5,7 @@
     using System.Diagnostics;
     using System.IO;
 
-    public class MalockServer
+    public sealed class MalockServer
     {
         private MalockSocketListener malockListener = null;
         private MalockEngine malockEngine = null;

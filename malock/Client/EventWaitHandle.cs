@@ -10,54 +10,6 @@
 
     public abstract class EventWaitHandle
     {
-        internal class Mappable
-        {
-            public const int ERROR_TIMEOUT = 2;
-            public const int ERROR_ABORTED = 1;
-            public const int ERROR_NOERROR = 0;
-
-            public EventWaitHandle Handle
-            {
-                get;
-                set;
-            }
-
-            public Action<int, MalockMessage, Stream> State
-            {
-                get;
-                set;
-            }
-
-            public Stopwatch Stopwatch
-            {
-                get;
-                private set;
-            }
-
-            public int Timeout
-            {
-                get;
-                set;
-            }
-
-            public MalockClient Client
-            {
-                get;
-                set;
-            }
-
-            public object Tag
-            {
-                get;
-                set;
-            }
-
-            public Mappable()
-            {
-                this.Stopwatch = new Stopwatch();
-            }
-        }
-
         public static void Sleep(int millisecondsTimeout)
         {
             Thread.Sleep(millisecondsTimeout);
@@ -167,7 +119,7 @@
                 }
             }
             MalockMessage message = this.NewMesssage(errno, -1);
-            return this.TryPostMessage(message, ref exception);
+            return MalockMessage.TryPostMessage(this.malock, message, ref exception);
         }
 
         private void ProcessAbort(object sender, EventArgs e)
@@ -268,11 +220,11 @@
 
             public void Handle(int error, MalockMessage message, Stream stream)
             {
-                if (error == Mappable.ERROR_ABORTED)
+                if (error == MalockMessage.Mappable.ERROR_ABORTED)
                 {
                     aborted = true;
                 }
-                else if (error == Mappable.ERROR_NOERROR)
+                else if (error == MalockMessage.Mappable.ERROR_NOERROR)
                 {
                     if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER)
                     {
@@ -352,7 +304,7 @@
 
         private static MalockSocketException NewAbortedException()
         {
-            return new MalockSocketException(Mappable.ERROR_ABORTED,
+            return new MalockSocketException(MalockMessage.Mappable.ERROR_ABORTED,
                         "An unknown interrupt occurred in the connection between the Malock and the server");
         }
 
@@ -372,13 +324,13 @@
         {
             byte cmd = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER;
             MalockMessage message = this.NewMesssage(cmd, millisecondsTimeout);
-            return this.TryInvokeAsync(message, millisecondsTimeout, callback, ref exception);
+            return MalockMessage.TryInvokeAsync(this.malock, message, millisecondsTimeout, callback, ref exception);
         }
 
         private bool TryPostExitMessage(ref Exception exception)
         {
             MalockMessage message = this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT, -1);
-            return this.TryPostMessage(message, ref exception);
+            return MalockMessage.TryPostMessage(this.malock, message, ref exception);
         }
 
         protected internal virtual bool Exit()
@@ -443,17 +395,17 @@
             {
                 bool success = false;
                 bool abort = false;
-                if (!this.TryInvokeAsync(this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, -1), -1,
+                if (!MalockMessage.TryInvokeAsync(this.malock, this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, -1), -1,
                     (errno, message, stream) =>
                 {
-                    if (errno == Mappable.ERROR_NOERROR)
+                    if (errno == MalockMessage.Mappable.ERROR_NOERROR)
                     {
                         if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO)
                         {
                             success = HandleInfo.Fill(results, stream);
                         }
                     }
-                    else if (errno == Mappable.ERROR_ABORTED)
+                    else if (errno == MalockMessage.Mappable.ERROR_ABORTED)
                     {
                         abort = true;
                     }
@@ -472,36 +424,5 @@
             }
         }
 
-        private bool TryPostMessage(MalockMessage message, ref Exception exception)
-        {
-            using (MemoryStream ms = (MemoryStream)message.Serialize())
-            {
-                if (!this.malock.Send(ms.GetBuffer(), 0, unchecked((int)ms.Position)))
-                {
-                    MalockMessage.FromRemoveInMap(message.Sequence);
-                    exception = new InvalidOperationException("The poll send returned results do not match the expected");
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        private bool TryInvokeAsync(MalockMessage message, int timeout, Action<int, MalockMessage, Stream> callback, ref Exception exception)
-        {
-            Mappable mapinfo = new EventWaitHandle.Mappable()
-            {
-                Handle = this,
-                State = callback,
-                Tag = null,
-                Timeout = timeout,
-                Client = this.malock,
-            };
-            if (!MalockMessage.RegisterToMap(message.Sequence, mapinfo))
-            {
-                exception = new InvalidOperationException("An internal error cannot add a call to a rpc-task in the map table");
-                return false;
-            }
-            return this.TryPostMessage(message, ref exception);
-        }
     }
 }

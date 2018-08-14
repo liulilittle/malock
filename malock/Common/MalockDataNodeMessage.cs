@@ -3,11 +3,11 @@
     using System;
     using System.IO;
 
-    public class MalockDataNodeMessage : MalockMessage
+    public sealed class MalockDataNodeMessage : MalockMessage
     {
-        public const byte CLIENT_COMMAND_LOCK_ENTER = 0;
-        public const byte CLIENT_COMMAND_LOCK_EXIT = 1;
-        public const byte CLIENT_COMMAND_GETALLINFO = 2;
+        public const byte CLIENT_COMMAND_LOCK_ENTER = 0x00;
+        public const byte CLIENT_COMMAND_LOCK_EXIT = 0x01;
+        public const byte CLIENT_COMMAND_GETALLINFO = 0x02;
 
         public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEENTER = 0xfb;
         public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT = 0xfc;

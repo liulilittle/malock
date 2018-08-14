@@ -5,7 +5,7 @@
     using System;
     using MSG = global::malock.Common.MalockDataNodeMessage;
 
-    public abstract class MalockMixClient<TMessage> : EventArgs
+    public abstract class MalockMixClient<TMessage> : EventArgs, IMalockSocket
         where TMessage : MalockMessage
     {
         private MalockSocket[] sockets = new MalockSocket[2];
@@ -73,6 +73,14 @@
         {
             get;
             private set;
+        }
+        /// <summary>
+        /// 自定义标记的数据
+        /// </summary>
+        public object Tag
+        {
+            get;
+            set;
         }
         /// <summary>
         /// 创建一个双机热备的 malock 客户端
@@ -314,6 +322,15 @@
             if (aborted)
             {
                 this.OnAborted(currentsocket);
+            }
+        }
+
+        void IMalockSocket.Abort()
+        {
+            for (int i = 0; i < sockets.Length; i++)
+            {
+                MalockSocket socket = sockets[i];
+                socket.Abort();
             }
         }
     }

@@ -6,7 +6,7 @@
     using HandleInfo = global::malock.Client.HandleInfo;
     using System.Collections.Generic;
 
-    public class MalockEngine
+    public sealed class MalockEngine
     {
         private MalockTaskPoll malockTaskPoll = null;
         private MalockTable malockTable = null;

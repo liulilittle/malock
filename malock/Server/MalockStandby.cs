@@ -8,7 +8,7 @@
     using MalockInnetSocket = global::malock.Client.MalockSocket;
     using MalockInnetSocketStream = global::malock.Client.MalockSocketStream;
 
-    public class MalockStandby : IMalockSocket
+    public sealed class MalockStandby : IMalockSocket
     {
         private readonly MalockInnetSocket socket = null;
         private readonly MalockEngine engine = null;

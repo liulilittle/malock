@@ -17,7 +17,7 @@
             private set;
         }
 
-        public MalockSocketStream(MalockSocket socket, Stream stream)
+        internal MalockSocketStream(MalockSocket socket, Stream stream)
         {
             if (socket == null)
             {
