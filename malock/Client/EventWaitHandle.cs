@@ -119,7 +119,7 @@
                 }
             }
             MalockMessage message = this.NewMesssage(errno, -1);
-            return MalockMessage.TryPostMessage(this.malock, message, ref exception);
+            return MalockMessage.TrySendMessage(this.malock, message, ref exception);
         }
 
         private void ProcessAbort(object sender, EventArgs e)
@@ -330,7 +330,7 @@
         private bool TryPostExitMessage(ref Exception exception)
         {
             MalockMessage message = this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT, -1);
-            return MalockMessage.TryPostMessage(this.malock, message, ref exception);
+            return MalockMessage.TrySendMessage(this.malock, message, ref exception);
         }
 
         protected internal virtual bool Exit()

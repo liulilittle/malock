@@ -77,10 +77,37 @@
             private set;
         }
 
-        internal HostEntry()
+        public object Tag
+        {
+            get;
+            set;
+        }
+
+        public HostEntry()
         {
             this.Primary = new Host();
             this.Standby = new Host();
+        }
+
+        public bool Available
+        {
+            get
+            {
+                return this.Primary.Available || this.Standby.Available;
+            }
+        }
+
+        public Host Select(string address)
+        {
+            if (this.Primary.Address == address)
+            {
+                return this.Primary;
+            }
+            else if (this.Standby.Address == address)
+            {
+                return this.Standby;
+            }
+            return null;
         }
 
         public string MeasureKey(bool positive)

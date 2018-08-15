@@ -4,6 +4,7 @@
     using global::malock.Core;
     using System;
     using MSG = global::malock.Common.MalockDataNodeMessage;
+    using System.Collections.Concurrent;
 
     public abstract class MalockMixClient<TMessage> : EventArgs, IMalockSocket
         where TMessage : MalockMessage
@@ -14,6 +15,7 @@
         private readonly object syncobj = new object();
         private readonly MixEvent<EventHandler<MalockNetworkMessage>> messageevents = new MixEvent<EventHandler<MalockNetworkMessage>>();
         private readonly MixEvent<EventHandler> abortedevents = new MixEvent<EventHandler>();
+        private ConcurrentDictionary<MalockSocket, DateTime> abortedtime = new ConcurrentDictionary<MalockSocket, DateTime>();
 
         private const int BESTMAXCONNECTTIME = 1000;
 
@@ -257,6 +259,18 @@
             return success;
         }
 
+        private void UpdateAbortTime(MalockSocket socket, DateTime dateTime)
+        {
+            abortedtime.AddOrUpdate(socket, dateTime, (ok, ov) => dateTime);
+        }
+
+        private DateTime GetAbortTime(MalockSocket socket)
+        {
+            DateTime dateTime;
+            this.abortedtime.TryGetValue(socket, out dateTime);
+            return dateTime;
+        }
+
         private void SocketConnected(object sender, EventArgs e)
         {
             MalockSocket currentsocket = null;
@@ -283,6 +297,14 @@
                     {
                         readying = true;
                         this.IsReady = true;
+                    }
+                }
+                if (currentsocket == sockets[0]) // 它可能只是链接发生中断，但服务器本身是可靠的，所以不需要平滑到备用服务器。
+                {
+                    TimeSpan tv = unchecked(DateTime.Now - this.GetAbortTime(currentsocket));
+                    if (tv.TotalMilliseconds < Malock.SmoothingTime)
+                    {
+                        this.preferred = currentsocket;
                     }
                 }
                 currentsocket = this.preferred;
@@ -323,6 +345,7 @@
             {
                 this.OnAborted(currentsocket);
             }
+            this.UpdateAbortTime(currentsocket, DateTime.Now);
         }
 
         void IMalockSocket.Abort()

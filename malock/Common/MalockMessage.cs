@@ -326,7 +326,39 @@
             }
         }
 
-        internal static bool TryPostMessage(IMalockSocket malock, MalockMessage message, ref Exception exception)
+        internal static bool TrySendMessage(IMalockSocket socket, MalockMessage message, byte[] buffer, int ofs, int len)
+        {
+            if (socket == null || message == null)
+            {
+                return false;
+            }
+            using (MemoryStream ms = (MemoryStream)message.Serialize())
+            {
+                if (buffer != null)
+                {
+                    ms.Write(buffer, ofs, len);
+                }
+                return socket.Send(ms.GetBuffer(), 0, Convert.ToInt32(ms.Position));
+            }
+        }
+
+        internal static bool TrySendMessage(IMalockSocket socket, Stream message)
+        {
+            if (socket == null || message == null)
+            {
+                return false;
+            }
+            MemoryStream ms = (MemoryStream)message;
+            return socket.Send(ms.GetBuffer(), 0, Convert.ToInt32(ms.Position));
+        }
+
+        internal static bool TrySendMessage(IMalockSocket malock, MalockMessage message)
+        {
+            Exception exception = null;
+            return TrySendMessage(malock, message, ref exception);
+        }
+
+        internal static bool TrySendMessage(IMalockSocket malock, MalockMessage message, ref Exception exception)
         {
             if (malock == null)
             {
@@ -389,6 +421,12 @@
             }
         }
 
+        internal static bool TryInvokeAsync(IMalockSocket malock, MalockMessage message, int timeout, Action<int, MalockMessage, Stream> callback)
+        {
+            Exception exception = null;
+            return TryInvokeAsync(malock, message, timeout, callback, ref exception);
+        }
+
         internal static bool TryInvokeAsync(IMalockSocket malock, MalockMessage message, int timeout, Action<int, MalockMessage, Stream> callback, ref Exception exception)
         {
             if (malock == null)
@@ -411,7 +449,7 @@
                 exception = new InvalidOperationException("An internal error cannot add a call to a rpc-task in the map table");
                 return false;
             }
-            return TryPostMessage(malock, message, ref exception);
+            return TrySendMessage(malock, message, ref exception);
         }
     }
 }

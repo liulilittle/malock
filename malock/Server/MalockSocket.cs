@@ -1,8 +1,8 @@
 ﻿namespace malock.Server
 {
     using global::malock.Auxiliary;
-    using global::malock.Core;
     using global::malock.Common;
+    using global::malock.Core;
     using System;
     using System.IO;
     using System.Net.Sockets;

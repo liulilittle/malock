@@ -4,17 +4,17 @@
     using System;
     using MSG = global::malock.Common.MalockNameNodeMessage;
 
-    public class Nns : MalockMixClient<MSG> 
+    public class NnsClient : MalockMixClient<MSG> 
     {
-        public Nns(string identity, string mainuseMachine, string standbyMachine) :
+        public NnsClient(string identity, string mainuseMachine, string standbyMachine) :
             base(identity, mainuseMachine, standbyMachine)
         {
 
         }
 
-        public new Nns Run()
+        public new NnsClient Run()
         {
-            return (Nns)base.Run();
+            return (NnsClient)base.Run();
         }
 
         protected override int GetLinkMode()

@@ -12,11 +12,11 @@
         /// <summary>
         /// 连接中断后重连间隔时间
         /// </summary>
-        public const int ReconnectionTime = 500;
+        public const int ReconnectionTime = 100;
         /// <summary>
         /// 连接中断后平滑到另一个连接的平滑时间
         /// </summary>
-        public const int SmoothingTime = 500;
+        public const int SmoothingTime = 1000;
         /// <summary>
         /// 最大重入数
         /// </summary>

@@ -4,20 +4,19 @@
     using global::malock.Server;
     using System;
     using System.IO;
-    using System.Collections.Concurrent;
 
     public class NnsServer
     {
         private MalockSocketListener malockListener = null;
+        private NnsTable nnsTable = null;
         private EventHandler onAboredHandler = null;
         private EventHandler onConnectedHandler = null;
         private EventHandler<MalockSocketStream> onReceivedHandler = null;
-        private ConcurrentDictionary<string, HostEntry> malockEntryInfos = null;
 
         public NnsServer(int port, string standbyMachine)
         {
             this.malockListener = new MalockSocketListener(port);
-            this.malockEntryInfos = new ConcurrentDictionary<string, HostEntry>();
+            this.nnsTable = new NnsTable();
             do
             {
                 this.onReceivedHandler = this.ProcessReceived;
@@ -65,26 +64,33 @@
             }
         }
 
-        private void QueryHostEntry(MalockSocket socket, string key)
+        private void QueryHostEntry(MalockSocket socket, int sequence, string key)
         {
-            HostEntry entry = null;
-            if (!this.malockEntryInfos.TryGetValue(key, out entry))
+            HostEntry entry = this.nnsTable.GetEntry(key);
+            MalockNameNodeMessage message = new MalockNameNodeMessage();
+            if (entry == null)
             {
-                entry = new HostEntry();
+                message.Command = MalockMessage.COMMON_COMMAND_ERROR;
             }
-
+            else
+            {
+                message.Command = MalockNameNodeMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO;
+            }
+            message.Key = key;
+            message.Sequence = sequence;
+            MalockMessage.TrySendMessage(socket, message);
         }
 
         private void DumpHostEntry(MalockSocket socket)
         {
-
+            
         }
 
         private void ProcessClient(MalockSocket socket, MalockNameNodeMessage message)
         {
             if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO)
             {
-                this.QueryHostEntry(socket, message.Key);
+                this.QueryHostEntry(socket, message.Sequence, message.Key);
             }
             else if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_DUMPHOSTENTRYINFO)
             {

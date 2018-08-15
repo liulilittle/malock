@@ -60,11 +60,12 @@
     <Compile Include="Client\EventWaitHandle.cs" />
     <Compile Include="Core\AtomicBoolean.cs" />
     <Compile Include="NN\HostEntry.cs" />
-    <Compile Include="NN\Nns.cs" />
+    <Compile Include="NN\NnsClient.cs" />
     <Compile Include="Client\MalockClient.cs" />
     <Compile Include="NN\NnsServer.cs" />
     <Compile Include="Common\IMalockSocket.cs" />
     <Compile Include="NN\NnsError.cs" />
+    <Compile Include="NN\NnsTable.cs" />
     <Compile Include="Server\MalockServer.cs" />
     <Compile Include="Server\MalockSocket.cs" />
     <Compile Include="Server\MalockSocketListener.cs" />
