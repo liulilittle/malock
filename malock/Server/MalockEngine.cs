@@ -192,9 +192,9 @@
 
         public unsafe bool GetAllInfo(MalockTaskInfo info)
         {
-            using (MemoryStream ms = new MemoryStream())
+            using (MemoryStream stream = new MemoryStream())
             {
-                BinaryWriter bw = new BinaryWriter(ms);
+                BinaryWriter bw = new BinaryWriter(stream);
                 bw.Write(0);
                 int count = 0;
                 foreach (var locker in this.malockTable.GetAllLocker())
@@ -203,17 +203,17 @@
                     {
                         HandleInfo handleInfo = new HandleInfo(
                             locker.Key, locker.Identity, locker.Available);
-                        handleInfo.Serialize(ms);
+                        handleInfo.Serialize(stream);
                     }
                     count++;
                 }
-                byte[] buffer = ms.GetBuffer();
+                byte[] buffer = stream.GetBuffer();
                 fixed (byte* pinned = buffer)
                 {
                     *(int*)pinned = count;
                 }
                 MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, info.Sequence, -1);
-                return MalockMessage.TrySendMessage(info.Socket, message, buffer, 0, Convert.ToInt32(ms.Position));
+                return MalockMessage.TrySendMessage(info.Socket, message, buffer, 0, Convert.ToInt32(stream.Position));
             }
         }
 

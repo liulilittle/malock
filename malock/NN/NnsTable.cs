@@ -54,7 +54,7 @@
             }
         }
 
-        public IEnumerable<Host> GetAllHosts()
+        public ICollection<Host> GetAllHosts()
         {
             return this.hosts.Values;
         }
@@ -346,7 +346,7 @@
             }
         }
 
-        public HostEntry GetHost(string identity)
+        public Host GetHost(string identity)
         {
             lock (this.syncobj)
             {
@@ -355,7 +355,7 @@
                 {
                     return null;
                 }
-                return host.Entry;
+                return host;
             }
         }
 

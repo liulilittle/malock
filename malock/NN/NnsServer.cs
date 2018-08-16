@@ -5,7 +5,7 @@
     using System;
     using System.IO;
 
-    public class NnsServer
+    public unsafe class NnsServer
     {
         private MalockSocketListener malockListener = null;
         private NnsTable nnsTable = null;
@@ -77,18 +77,46 @@
             }
             using (MemoryStream stream = new MemoryStream())
             {
-                message.Serialize(stream);
-                if (entry != null)
+                using (BinaryWriter bw = new BinaryWriter(stream))
                 {
-                    entry.Serialize(stream);
+                    message.Serialize(bw);
+                    if (entry != null)
+                    {
+                        entry.Serialize(bw);
+                    }
+                    MalockMessage.TrySendMessage(socket, stream);
                 }
-                MalockMessage.TrySendMessage(socket, stream);
             }
         }
 
-        private void DumpHostEntry(MalockSocket socket)
+        private void DumpHostEntry(MalockSocket socket, int sequence)
         {
-            
+            MalockNameNodeMessage message = new MalockNameNodeMessage();
+            message.Sequence = sequence;
+            message.Command = MalockMessage.COMMON_COMMAND_ERROR;
+            do
+            {
+                var hosts = this.nnsTable.GetAllHosts();
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    using (BinaryWriter bw = new BinaryWriter(stream))
+                    {
+                        bw.Write(0);
+                        int count = 0;
+                        foreach (var host in hosts)
+                        {
+                            HostEntry entry = host.Entry;
+                            entry.Serialize(bw);
+                            count++;
+                        }
+                        fixed (byte* pinned = stream.GetBuffer())
+                        {
+                            *(int*)pinned = count;
+                        }
+                    }
+                    MalockMessage.TrySendMessage(socket, message, stream.GetBuffer(), 0, unchecked((int)stream.Position));
+                }
+            } while (false);
         }
 
         private void RegisterHostEntry(MalockSocket socket, int sequence, HostEntry entry)
@@ -118,7 +146,7 @@
             }
             else if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_DUMPHOSTENTRYINFO)
             {
-                this.DumpHostEntry(socket);
+                this.DumpHostEntry(socket, message.Sequence);
             }
         }
 
