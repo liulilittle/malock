@@ -2,6 +2,7 @@
 {
     using global::malock.Common;
     using global::malock.NN;
+    using malock.Auxiliary;
     using System;
     using System.IO;
     using MSG = global::malock.Common.MalockNameNodeMessage;
@@ -12,7 +13,7 @@
         private readonly MalockConfiguration configuration = null;
 
         internal MalockNnsClient(MalockConfiguration configuration) : 
-            base(configuration.Identity, configuration.NnsNode, configuration.NnsStandbyNode, configuration)
+            base(configuration.NnsId, configuration.NnsNode, configuration.NnsStandbyNode, configuration)
         {
             this.configuration = configuration;
             base.Run();
@@ -39,8 +40,8 @@
                 do
                 {
                     HostEntry entry = new HostEntry();
-                    entry.Primary.Address = configuration.NnsNode;
-                    entry.Standby.Address = configuration.NnsStandbyNode;
+                    entry.Primary.Address = Ipep.ToIpepString(GetEtherAddress(malock), this.configuration.Port);
+                    entry.Standby.Address = configuration.StandbyNode;
                     entry.Serialize(ms);
                 } while (false);
                 return MSG.TrySendMessage(malock, ms);

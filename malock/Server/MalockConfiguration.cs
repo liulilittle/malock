@@ -10,6 +10,12 @@
             private set;
         }
 
+        public string NnsId
+        {
+            get;
+            private set;
+        }
+
         public int Port
         {
             get;
@@ -40,7 +46,7 @@
             set;
         }
 
-        public MalockConfiguration(string identity, int port, string standbyNode, string nnsNode, string nnsStandbyNode)
+        public MalockConfiguration(string identity, int port, string nns, string standbyNode, string nnsNode, string nnsStandbyNode)
         {
             if (port <= 0 || port > short.MaxValue)
             {
@@ -58,12 +64,17 @@
             {
                 throw new ArgumentOutOfRangeException("You have specified an invalid node Identity");
             }
+            if (string.IsNullOrEmpty(nns))
+            {
+                throw new ArgumentOutOfRangeException("Must provide a valid NNS-Id category domain name");
+            }
             if (string.IsNullOrEmpty(nnsStandbyNode))
             {
                 throw new ArgumentOutOfRangeException("You have specified an invalid NNS-standby host");
             }
             this.Identity = identity;
             this.NnsNode = nnsNode;
+            this.NnsId = nns;
             this.NnsStandbyNode = nnsStandbyNode;
             this.Port = port;
             this.StandbyNode = standbyNode;

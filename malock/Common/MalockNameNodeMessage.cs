@@ -25,7 +25,8 @@
 
         public static bool TryDeserialize(Stream stream, out MalockNameNodeMessage message)
         {
-            return (message = MalockNameNodeMessage.Deserialize(stream)) != null;
+            message = Deserialize(stream);
+            return message != null;
         }
 
         public static MalockNameNodeMessage Deserialize(Stream stream)

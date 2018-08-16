@@ -7,7 +7,6 @@
     using System.Net;
     using System.Net.Sockets;
     using System.Runtime.InteropServices;
-    using System.Text;
     using Interlocked = System.Threading.Interlocked;
 
     public unsafe class MalockSocket : EventArgs, IMalockSocket
@@ -17,6 +16,7 @@
         private readonly string identity = null;
         private volatile int connected = 0;
         private readonly int listenport = 0;
+        private EndPoint localEP = null;
 
         [DllImport("ws2_32.dll", SetLastError = true)]
         private static extern SocketError shutdown([In] IntPtr socketHandle, [In] SocketShutdown how);
@@ -188,11 +188,21 @@
 
             private void OnConnected()
             {
-                this.auxiliary.SocketObject = this.socket;
+                Socket socket = this.socket;
+                if (socket == null)
+                {
+                    return;
+                }
+                this.auxiliary.SocketObject = socket;
                 lock (this.syncobj)
                 {
+                    this.malock.localEP = socket.LocalEndPoint;
                     this.currentconnected = true;
                     this.SendDebarkationBuffer();
+                    do
+                    {
+                        Interlocked.CompareExchange(ref this.malock.connected, 1, 0);
+                    } while (false);
                 }
                 this.malock.OnConnected(EventArgs.Empty);
                 this.auxiliary.Run();
@@ -273,6 +283,16 @@
                     }
                 });
             }
+        }
+
+        internal IPAddress GetLocalEtherAddress()
+        {
+            IPEndPoint ep = this.localEP as IPEndPoint;
+            if (ep == null)
+            {
+                return null;
+            }
+            return ep.Address;
         }
 
         internal MalockSocket(string identity, string address, int listenport) :
@@ -418,7 +438,6 @@
 
         protected virtual void OnConnected(EventArgs e)
         {
-            Interlocked.CompareExchange(ref this.connected, 1, 0);
             EventHandler evt = this.Connected;
             if (evt != null)
             {

@@ -5,19 +5,20 @@
     using System;
     using MSG = global::malock.Common.MalockDataNodeMessage;
     using System.Collections.Concurrent;
+    using System.Net;
 
     public abstract class MalockMixClient<TMessage> : EventArgs, IMalockSocket
         where TMessage : MalockMessage
     {
         private MalockSocket[] sockets = new MalockSocket[2];
-        private MalockSocket preferred = null; // 首选服务器索引
+        private IMalockSocket preferred = null; // 首选服务器索引
         private DateTime firsttime = DateTime.MinValue;
         private readonly object syncobj = new object();
         private readonly object state = null;
         private readonly MixEvent<EventHandler<MalockNetworkMessage>> messageevents = new MixEvent<EventHandler<MalockNetworkMessage>>();
         private readonly MixEvent<EventHandler> abortedevents = new MixEvent<EventHandler>();
         private readonly MixEvent<EventHandler> cconnectedevents = new MixEvent<EventHandler>();
-        private ConcurrentDictionary<MalockSocket, DateTime> abortedtime = new ConcurrentDictionary<MalockSocket, DateTime>();
+        private ConcurrentDictionary<IMalockSocket, DateTime> abortedtime = new ConcurrentDictionary<IMalockSocket, DateTime>();
 
         private const int BESTMAXCONNECTTIME = 1000;
 
@@ -143,6 +144,17 @@
                 socket.Connected += this.SocketConnected;
                 socket.Received += this.SocketReceived;
             }
+            this.BindEventToMessage();
+        }
+
+        protected virtual void BindEventToMessage()
+        {
+            MalockMessage.Bind(this);
+        }
+
+        protected virtual void UnbindEventInMessage()
+        {
+            MalockMessage.Unbind(this);
         }
 
         protected virtual object GetStateObject()
@@ -153,6 +165,11 @@
         protected abstract int GetListenPort();
 
         protected abstract int GetLinkMode();
+
+        protected virtual IMalockSocket[] GetInnerSockets()
+        {
+            return this.sockets;
+        }
 
         public MalockMixClient<TMessage> Run()
         {
@@ -177,7 +194,7 @@
                             {
                                 if (!this.IsReady)
                                 {
-                                    socket = this.preferred;
+                                    socket = (MalockSocket)this.preferred;
                                     if (socket != null && this.Available)
                                     {
                                         readying = true;
@@ -197,6 +214,68 @@
                 }
                 return this;
             }
+        }
+
+        protected internal static string GetNetworkAddress(IMalockSocket malock)
+        {
+            if (malock == null)
+            {
+                return null;
+            }
+            do
+            {
+                MalockSocket socket = malock as MalockSocket;
+                if (socket != null)
+                {
+                    EndPoint ep = socket.Address;
+                    if (ep != null)
+                    {
+                        return ep.ToString();
+                    }
+                }
+            } while (false);
+            do
+            {
+                var socket = malock as global::malock.Server.MalockSocket;
+                if (socket != null)
+                {
+                    return socket.Address;
+                }
+            } while (false);
+            return null;
+        }
+
+        protected internal static string GetEtherAddress(IMalockSocket malock)
+        {
+            if (malock == null)
+            {
+                return null;
+            }
+            do
+            {
+                MalockSocket socket = malock as MalockSocket;
+                if (socket != null)
+                {
+                    IPAddress address = socket.GetLocalEtherAddress();
+                    if (address != null)
+                    {
+                        return address.ToString();
+                    }
+                }
+            } while (false);
+            do
+            {
+                var socket = malock as global::malock.Server.MalockSocket;
+                if (socket != null)
+                {
+                    IPAddress address = socket.GetRemoteEtherAddress();
+                    if (address != null)
+                    {
+                        return address.ToString();
+                    }
+                }
+            } while (false);
+            return null;
         }
 
         protected virtual void SocketReceived(object sender, MalockSocketStream e)
@@ -240,7 +319,7 @@
             this.messageevents.Invoke((evt) => evt(this, e));
         }
 
-        protected virtual MalockSocket Select(MalockSocket socket)
+        protected virtual IMalockSocket Select(IMalockSocket socket)
         {
             if (socket == null)
             {
@@ -277,7 +356,7 @@
 
         public virtual bool Send(byte[] buffer, int ofs, int len)
         {
-            MalockSocket socket = null;
+            IMalockSocket socket = null;
             lock (this.syncobj)
             {
                 socket = this.preferred;
@@ -289,7 +368,7 @@
             return socket.Send(buffer, ofs, len);
         }
 
-        public MalockSocket GetPreferredSocket()
+        public IMalockSocket GetPreferredSocket()
         {
             return this.preferred;
         }
@@ -312,7 +391,7 @@
             return success;
         }
 
-        private void UpdateAbortTime(MalockSocket socket, DateTime dateTime)
+        private void UpdateAbortTime(IMalockSocket socket, DateTime dateTime)
         {
             abortedtime.AddOrUpdate(socket, dateTime, (ok, ov) => dateTime);
         }
@@ -348,7 +427,8 @@
                     }
                     if (!this.IsReady)
                     {
-                        if (this.AllIsAvailable() || (ts.TotalMilliseconds > BESTMAXCONNECTTIME && this.Available))
+                        if (this.AllIsAvailable() || currentsocket == sockets[0] ||
+                            (ts.TotalMilliseconds > BESTMAXCONNECTTIME && this.Available))
                         {
                             readying = true;
                             this.IsReady = true;
@@ -362,8 +442,8 @@
                             this.preferred = currentsocket;
                         }
                     }
-                    currentsocket = this.preferred;
-                    Console.Title = "preferred->" + this.preferred.Address.ToString();
+                    currentsocket = (MalockSocket)this.preferred;
+                    Console.Title = "preferred->" + GetNetworkAddress(currentsocket);
                 }
                 if (readying)
                 {
@@ -394,7 +474,8 @@
                 }
                 if (this.preferred != null)
                 {
-                    Console.Title = "preferred->" + this.preferred.Address.ToString();
+                    MalockSocket socket = (MalockSocket)this.preferred;
+                    Console.Title = "preferred->" + GetNetworkAddress(socket);
                 }
             }
             if (aborted)

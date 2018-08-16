@@ -19,6 +19,7 @@
         private bool connected = false;
         private string identity = null;
         private int remoteport = 0;
+        private EndPoint remoteep = null;
         private MalockSocketAuxiliary auxiliary = null;
         private Func<MemoryStream, bool> socketsendproc = null;
         private static readonly byte[] emptrybufs = new byte[0];
@@ -26,6 +27,16 @@
         public event EventHandler Aborted = null;
         public event EventHandler Connected = null;
         public event EventHandler<MalockSocketStream> Received = null;
+
+        internal IPAddress GetRemoteEtherAddress()
+        {
+            IPEndPoint ep = this.remoteep as IPEndPoint;
+            if (ep == null)
+            {
+                return null;
+            }
+            return ep.Address;
+        }
 
         public MalockSocket(Socket socket)
         {
@@ -35,6 +46,7 @@
             }
             this.socket = socket;
             this.socket.NoDelay = true;
+            this.remoteep = socket.RemoteEndPoint;
             this.socketsendproc = (ms) => auxiliary.Send(ms.GetBuffer(), 0, unchecked((int)ms.Length));
             this.auxiliary = new MalockSocketAuxiliary(this.syncobj, this.ProcessAborted, this.ProcessReceived);
             this.auxiliary.SocketObject = socket;
@@ -178,12 +190,15 @@
                 {
                     using (BinaryReader br = new BinaryReader(stream))
                     {
-                        IPEndPoint ipep = (IPEndPoint)socket.RemoteEndPoint;
-                        this.LinkMode = br.ReadByte();
-                        int port = br.ReadUInt16();
-                        this.identity = MalockMessage.FromStreamInRead(br);
-                        this.remoteport = ipep.Port;
-                        this.address = Ipep.ToIpepString(ipep.Address.ToString(), port);
+                        IPEndPoint ipep = this.remoteep as IPEndPoint;
+                        if (ipep != null)
+                        {
+                            this.LinkMode = br.ReadByte();
+                            int port = br.ReadUInt16();
+                            this.identity = MalockMessage.FromStreamInRead(br);
+                            this.remoteport = ipep.Port;
+                            this.address = Ipep.ToIpepString(ipep.Address.ToString(), port);
+                        }
                     }
                     if (string.IsNullOrEmpty(this.identity))
                     {

@@ -4,7 +4,6 @@
     using global::malock.Server;
     using System;
     using System.IO;
-    using System.Net;
 
     public class NnsServer
     {
@@ -69,17 +68,22 @@
         {
             HostEntry entry = this.nnsTable.GetEntry(key);
             MalockNameNodeMessage message = new MalockNameNodeMessage();
-            if (entry == null)
-            {
-                message.Command = MalockMessage.COMMON_COMMAND_ERROR;
-            }
-            else
+            message.Key = key;
+            message.Sequence = sequence;
+            message.Command = MalockMessage.COMMON_COMMAND_ERROR;
+            if (entry != null)
             {
                 message.Command = MalockNameNodeMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO;
             }
-            message.Key = key;
-            message.Sequence = sequence;
-            MalockMessage.TrySendMessage(socket, message);
+            using (MemoryStream stream = new MemoryStream())
+            {
+                message.Serialize(stream);
+                if (entry != null)
+                {
+                    entry.Serialize(stream);
+                }
+                MalockMessage.TrySendMessage(socket, stream);
+            }
         }
 
         private void DumpHostEntry(MalockSocket socket)
@@ -94,9 +98,13 @@
             message.Command = MalockMessage.COMMON_COMMAND_ERROR;
             if (entry != null)
             {
-                if (this.nnsTable.Register(socket.Identity, entry))
+                lock (this.nnsTable.GetSynchronizationObject())
                 {
-                    message.Command = MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO;
+                    if (this.nnsTable.Register(socket.Identity, entry))
+                    {
+                        message.Command = MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO;
+                    }
+                    this.nnsTable.SetAvailable(socket.Identity, socket.Address, true);
                 }
             }
             MalockMessage.TrySendMessage(socket, message);

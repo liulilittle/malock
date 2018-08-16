@@ -193,7 +193,7 @@
         };
         private static readonly EventHandler onabortedhandler = (sender, e) =>
         {
-            MalockClient malock = (MalockClient)sender;
+            IMalockSocket malock = (IMalockSocket)sender;
             MalockMessage.Abort(malock);
         };
 
@@ -230,7 +230,8 @@
             });
         }
 
-        internal static void Bind(MalockClient malock)
+        internal static void Bind<TMessage>(MalockMixClient<TMessage> malock)
+            where TMessage : MalockMessage
         {
             if (malock == null)
             {
@@ -240,7 +241,8 @@
             malock.Aborted += onabortedhandler;
         }
 
-        internal static void Unbind(MalockClient malock)
+        internal static void Unbind<TMessage>(MalockMixClient<TMessage> malock)
+            where TMessage : MalockMessage
         {
             if (malock == null)
             {
@@ -248,6 +250,35 @@
             }
             malock.Message -= onmessagehandler;
             malock.Aborted -= onabortedhandler;
+        }
+
+        internal static void Abort(IMalockSocket malock)
+        {
+            if (malock == null)
+            {
+                throw new ArgumentNullException("malock");
+            }
+            lock (msgmap)
+            {
+                foreach (KeyValuePair<int, Mappable> kv in msgmap)
+                {
+                    Mappable map = kv.Value;
+                    if (map == null && map.Client != malock)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        Mappable mv;
+                        msgmap.TryRemove(kv.Key, out mv);
+                    }
+                    var state = map.State;
+                    if (state != null)
+                    {
+                        state(Mappable.ERROR_ABORTED, null, null);
+                    }
+                }
+            }
         }
 
         internal static bool RegisterToMap(int msgid, Mappable map)
@@ -291,35 +322,6 @@
                 }
             }
             return map;
-        }
-
-        internal static void Abort(MalockClient malock)
-        {
-            if (malock == null)
-            {
-                throw new ArgumentNullException("malock");
-            }
-            lock (msgmap)
-            {
-                foreach (KeyValuePair<int, Mappable> kv in msgmap)
-                {
-                    Mappable map = kv.Value;
-                    if (map == null && map.Client != malock)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        Mappable mv;
-                        msgmap.TryRemove(kv.Key, out mv);
-                    }
-                    var state = map.State;
-                    if (state != null)
-                    {
-                        state(Mappable.ERROR_ABORTED, null, null);
-                    }
-                }
-            }
         }
 
         internal static bool TrySendMessage(IMalockSocket socket, MalockMessage message, byte[] buffer, int ofs, int len)

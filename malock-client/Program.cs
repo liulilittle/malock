@@ -5,35 +5,29 @@
     using malock.NN;
     using System;
     using System.Diagnostics;
+    using System.Net;
     using Interlocked = System.Threading.Interlocked;
 
     class Program
     {
-        static void UT_NnsTable()
+        static void NN_Test()
         {
-            NnsTable nnsTable = new NnsTable();
-            HostEntry host1 = new HostEntry();
-            host1.Primary.Available = true;
-            host1.Primary.Address = "127.0.0.1:6800";
-            host1.Standby.Available = true;
-            host1.Standby.Address = "127.0.0.1:6801";
-
-            HostEntry host2 = new HostEntry();
-            host2.Primary.Available = true;
-            host2.Primary.Address = "127.0.0.1:7800";
-            host2.Standby.Available = true;
-            host2.Standby.Address = "127.0.0.1:7801";
-
-            nnsTable.Register("0", host1);
-            nnsTable.Register("1", host2);
-            // nnsTable.Unregister("0", out host);
-            HostEntry entry1 = nnsTable.GetEntry("1");
-            HostEntry entry2 = nnsTable.GetEntry("2");
+            NnsClient nns = new NnsClient("malock-client-node-001", "127.0.0.1:6900", "127.0.0.1:6901").Run();
+            nns.Ready += delegate
+            {
+                nns.QueryHostEntryAsync("test013", (error, entry) =>
+                {
+                    Console.WriteLine(entry);
+                });
+            };
         }
 
         static void Main(string[] args)
         {
-            UT_NnsTable();
+            NN_Test();
+
+            Console.ReadKey(false);
+
             MalockClient malock = Malock.NewClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             malock.Ready += delegate
             {

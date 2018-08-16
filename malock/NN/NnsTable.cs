@@ -64,7 +64,7 @@
             return this.hosts.Keys;
         }
 
-        public NnsTable()
+        internal NnsTable()
         {
             this.entrys = new ConcurrentDictionary<string, Host>();
             this.hosts = new ConcurrentDictionary<string, Host>();
@@ -343,6 +343,19 @@
             lock (this.syncobj)
             {
                 return this.entrys.ContainsKey(key);
+            }
+        }
+
+        public HostEntry GetHost(string identity)
+        {
+            lock (this.syncobj)
+            {
+                Host host;
+                if (!this.hosts.TryGetValue(identity, out host))
+                {
+                    return null;
+                }
+                return host.Entry;
             }
         }
 

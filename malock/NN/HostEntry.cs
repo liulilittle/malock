@@ -132,7 +132,7 @@
             set;
         }
 
-        public HostEntry()
+        internal HostEntry()
         {
             this.Primary = new Host();
             this.Standby = new Host();
@@ -144,6 +144,11 @@
             {
                 return this.Primary.Available || this.Standby.Available;
             }
+        }
+
+        public override string ToString()
+        {
+            return string.Format("Available({0}), Primary({1}), Standby({2})", this.Available, this.Primary, this.Standby);
         }
 
         public Host Select(string address)

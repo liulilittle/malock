@@ -92,7 +92,6 @@
             this.Key = key;
             this.malock = malock;
             this.malock.Aborted += this.ProcessAbort;
-            MalockMessage.Bind(this.malock);
             do
             {
                 this.ackstatetimer = new Timer();
