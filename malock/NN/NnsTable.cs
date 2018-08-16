@@ -364,6 +364,14 @@
             {
                 if (!this.hosts.TryAdd(identity, new Host(entry)))
                 {
+                    Host host;
+                    if (this.hosts.TryGetValue(identity, out host))
+                    {
+                        if (host.Entry == entry)
+                        {
+                            return true;
+                        }
+                    }
                     return false;
                 }
                 else

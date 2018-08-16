@@ -99,10 +99,6 @@
                 return false;
             }
             message.Sequence = reader.ReadInt32();
-            if (!MalockMessage.StreamIsReadable(stream, sizeof(int)))
-            {
-                return false;
-            }
             return true;
         }
 

@@ -5,6 +5,7 @@
     using global::malock.Core;
     using System;
     using System.IO;
+    using System.Net;
     using System.Net.Sockets;
     using System.Text;
     using MalockInnetSocket = global::malock.Client.MalockSocket;
@@ -13,9 +14,11 @@
     {
         private readonly object syncobj = new object();
         private readonly Socket socket = null;
+        private string address = null;
         private readonly SpinLock connectwait = new SpinLock(); 
         private bool connected = false;
         private string identity = null;
+        private int remoteport = 0;
         private MalockSocketAuxiliary auxiliary = null;
         private Func<MemoryStream, bool> socketsendproc = null;
         private static readonly byte[] emptrybufs = new byte[0];
@@ -42,6 +45,14 @@
             this.auxiliary.Run();
         }
 
+        public string Address
+        {
+            get
+            {
+                return this.address;
+            }
+        }
+
         public string Identity
         {
             get
@@ -66,6 +77,11 @@
         {
             get;
             set;
+        }
+
+        public int GetRemotePort()
+        {
+            return this.remoteport;
         }
 
         public bool Available
@@ -162,8 +178,12 @@
                 {
                     using (BinaryReader br = new BinaryReader(stream))
                     {
+                        IPEndPoint ipep = (IPEndPoint)socket.RemoteEndPoint;
                         this.LinkMode = br.ReadByte();
-                        this.identity = Encoding.UTF8.GetString(br.ReadBytes(Convert.ToInt32(stream.Length - stream.Position)));
+                        int port = br.ReadUInt16();
+                        this.identity = MalockMessage.FromStreamInRead(br);
+                        this.remoteport = ipep.Port;
+                        this.address = Ipep.ToIpepString(ipep.Address.ToString(), port);
                     }
                     if (string.IsNullOrEmpty(this.identity))
                     {

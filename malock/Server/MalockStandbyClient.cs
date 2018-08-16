@@ -45,7 +45,7 @@
             }
             this.engine = engine;
             this.configuration = configuration;
-            this.socket = new MalockInnetSocket(configuration.Identity, this.GetAddress(configuration), 
+            this.socket = new MalockInnetSocket(configuration.Identity, this.GetAddress(configuration), configuration.Port,
                 MalockMessage.LINK_MODE_SERVER);
             this.socket.Received += this.OnReceived;
             this.socket.Run();

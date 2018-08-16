@@ -4,6 +4,7 @@
     using global::malock.Server;
     using System;
     using System.IO;
+    using System.Net;
 
     public class NnsServer
     {
@@ -57,10 +58,10 @@
             using (Stream stream = e.Stream)
             {
                 MalockNameNodeMessage.TryDeserialize(stream, out message);
-            }
-            if (message != null)
-            {
-                this.ProcessMessage(e.Socket, message);
+                if (message != null)
+                {
+                    this.ProcessMessage(e.Socket, message, stream);
+                }
             }
         }
 
@@ -86,6 +87,21 @@
             
         }
 
+        private void RegisterHostEntry(MalockSocket socket, int sequence, HostEntry entry)
+        {
+            MalockNameNodeMessage message = new MalockNameNodeMessage();
+            message.Sequence = sequence;
+            message.Command = MalockMessage.COMMON_COMMAND_ERROR;
+            if (entry != null)
+            {
+                if (this.nnsTable.Register(socket.Identity, entry))
+                {
+                    message.Command = MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO;
+                }
+            }
+            MalockMessage.TrySendMessage(socket, message);
+        }
+
         private void ProcessClient(MalockSocket socket, MalockNameNodeMessage message)
         {
             if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO)
@@ -98,15 +114,19 @@
             }
         }
 
-        private void ProcessServer(MalockSocket socket, MalockNameNodeMessage message)
+        private void ProcessServer(MalockSocket socket, MalockNameNodeMessage message, Stream stream)
         {
-            if (message.Command == MalockNameNodeMessage.SERVER_COMMAND_SYN_HOSTENTRYINFO)
+            if (message.Command == MalockNameNodeMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO)
             {
 
             }
+            else if (message.Command == MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO)
+            {
+                this.RegisterHostEntry(socket, message.Sequence, HostEntry.Deserialize(stream));
+            }
         }
 
-        private void ProcessMessage(MalockSocket socket, MalockNameNodeMessage message)
+        private void ProcessMessage(MalockSocket socket, MalockNameNodeMessage message, Stream stream)
         {
             switch (socket.LinkMode)
             {
@@ -114,7 +134,7 @@
                     this.ProcessClient(socket, message);
                     break;
                 case MalockMessage.LINK_MODE_SERVER:
-                    this.ProcessServer(socket, message);
+                    this.ProcessServer(socket, message, stream);
                     break;
                 default:
                     socket.Abort();
@@ -125,6 +145,14 @@
         private void ProcessAborted(object sender, EventArgs e)
         {
             MalockSocket socket = (MalockSocket)sender;
+            lock (this.nnsTable.GetSynchronizationObject())
+            {
+                this.nnsTable.SetAvailable(socket.Identity, socket.Address, false);
+                if (!this.nnsTable.IsAvailable(socket.Identity))
+                {
+                    this.nnsTable.Unregister(socket.Identity);
+                }
+            }
             lock (socket)
             {
                 socket.Aborted -= this.onAboredHandler;

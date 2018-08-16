@@ -6,8 +6,8 @@
 
     public class NnsClient : MalockMixClient<MSG> 
     {
-        public NnsClient(string identity, string mainuseNode, string standbyNode) :
-            base(identity, mainuseNode, standbyNode)
+        internal NnsClient(string identity, string mainuseNode, string standbyNode, object state) :
+            base(identity, mainuseNode, standbyNode, state)
         {
 
         }
@@ -93,6 +93,11 @@
             message.Sequence = MSG.NewId();
             message.Key = key;
             return message;
+        }
+
+        protected override int GetListenPort()
+        {
+            return 0;
         }
     }
 }

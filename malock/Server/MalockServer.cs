@@ -23,7 +23,7 @@
                 throw new ArgumentNullException("configuration it cannot be considered a null");
             }
             this.configuration = configuration;
-            this.malockEngine = new MalockEngine(new MalockTable(), configuration);
+            this.malockEngine = new MalockEngine(configuration);
             this.malockListener = new MalockSocketListener(configuration.Port);
             do
             {

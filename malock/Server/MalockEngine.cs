@@ -15,21 +15,17 @@
         private MalockStandbyClient malockStandbyClient = null;
         private Dictionary<string, int> ackPipelineCounter = new Dictionary<string, int>();
 
-        public MalockEngine(MalockTable malockTable, MalockConfiguration configuration)
+        public MalockEngine(MalockConfiguration configuration)
         {
             if (configuration == null)
             {
                 throw new ArgumentNullException("configuration");
             }
-            if (malockTable == null)
-            {
-                throw new ArgumentNullException("malockTable");
-            }
             this.configuration = configuration;
-            this.malockTable = malockTable;
+            this.malockTable = new MalockTable();
             this.malockTaskPoll = new MalockTaskPoll(this);
+            this.malockNnsClient = new MalockNnsClient(configuration);
             this.malockStandbyClient = new MalockStandbyClient(this, configuration);
-            this.malockNnsClient = new MalockNnsClient(configuration.Identity, configuration.NnsNode, configuration.StandbyNode);
         }
 
         public MalockStandbyClient GetStandbyClient()

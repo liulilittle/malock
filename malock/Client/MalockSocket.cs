@@ -16,6 +16,7 @@
         private SocketWorkContext context = null;
         private readonly string identity = null;
         private volatile int connected = 0;
+        private readonly int listenport = 0;
 
         [DllImport("ws2_32.dll", SetLastError = true)]
         private static extern SocketError shutdown([In] IntPtr socketHandle, [In] SocketShutdown how);
@@ -92,7 +93,7 @@
             private readonly AsyncCallback connectcallback = null;
             private readonly object syncobj = new object();
             private bool currentconnected = false;
-            private byte[] identitybuf = null;
+            private byte[] connectauthbuf = null;
             private MalockSocketAuxiliary auxiliary = null;
             private static readonly byte[] emptybufs = new byte[0];
 
@@ -105,13 +106,11 @@
                 this.malock = malock;
                 using (MemoryStream ms = new MemoryStream())
                 {
-                    ms.WriteByte(Convert.ToByte(malock.LinkMode));
-                    if (!string.IsNullOrEmpty(malock.identity))
-                    {
-                        this.identitybuf = Encoding.UTF8.GetBytes(malock.identity);
-                        ms.Write(this.identitybuf, 0, this.identitybuf.Length);
-                        this.identitybuf = ms.ToArray();
-                    }
+                    BinaryWriter bw = new BinaryWriter(ms);
+                    bw.Write(Convert.ToByte(malock.LinkMode));
+                    bw.Write(Convert.ToUInt16(malock.listenport));
+                    MalockMessage.WriteStringToStream(bw, malock.identity);
+                    this.connectauthbuf = ms.ToArray();
                 }
                 this.auxiliary = new MalockSocketAuxiliary(this.syncobj, this.OnError, this.OnReceive);
                 this.connectcallback = this.StartConnect;
@@ -162,7 +161,8 @@
             {
                 lock (this.syncobj)
                 {
-                    if (this.socket != null)
+                    Socket s = this.socket;
+                    if (s != null || this.currentconnected)
                     {
                         return;
                     }
@@ -183,7 +183,7 @@
 
             private void SendDebarkationBuffer()
             {
-                this.Send(identitybuf, 0, identitybuf.Length);
+                this.Send(connectauthbuf, 0, connectauthbuf.Length);
             }
 
             private void OnConnected()
@@ -198,7 +198,7 @@
                 this.auxiliary.Run();
             }
 
-            private void OnDisconnected()
+            private void OnAborted()
             {
                 this.malock.OnAborted(EventArgs.Empty);
             }
@@ -247,7 +247,7 @@
                 }
                 if (notifyEvent && lastisconnected)
                 {
-                    this.OnDisconnected();
+                    this.OnAborted();
                 }
             }
 
@@ -275,22 +275,25 @@
             }
         }
 
-        internal MalockSocket(string identity, string address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
+        internal MalockSocket(string identity, string address, int listenport) :
+            this(identity, address, listenport, MalockMessage.LINK_MODE_CLIENT)
         {
 
         }
 
-        internal MalockSocket(string identity, string address, int linkMode) : this(identity, Ipep.ToIpep(address), linkMode)
+        internal MalockSocket(string identity, string address, int listenport, int linkMode) : 
+            this(identity, Ipep.ToIpep(address), listenport, linkMode)
         {
 
         }
 
-        internal MalockSocket(string identity, EndPoint address) : this(identity, address, MalockMessage.LINK_MODE_CLIENT)
+        internal MalockSocket(string identity, EndPoint address, ushort listenport) : 
+            this(identity, address, listenport, MalockMessage.LINK_MODE_CLIENT)
         {
 
         }
 
-        internal MalockSocket(string identity, EndPoint address, int linkMode)
+        internal MalockSocket(string identity, EndPoint address, int listenport, int linkMode)
         {
             if (address == null)
             {
@@ -306,6 +309,7 @@
             }
             this.identity = identity;
             this.address = address;
+            this.listenport = listenport;
             this.LinkMode = linkMode;
         }
 
@@ -321,6 +325,11 @@
             {
                 return this.identity;
             }
+        }
+
+        protected internal int GetListenPort()
+        {
+            return this.listenport;
         }
 
         public EndPoint Address

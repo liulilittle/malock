@@ -4,8 +4,8 @@
 
     public class MalockClient : MalockMixClient<MSG>
     {
-        public MalockClient(string identity, string mainuseNode, string standbyNode) :
-            base(identity, mainuseNode, standbyNode)
+        internal MalockClient(string identity, string mainuseNode, string standbyNode) :
+            base(identity, mainuseNode, standbyNode, null)
         {
 
         }
@@ -18,6 +18,11 @@
         protected override int GetLinkMode()
         {
             return MSG.LINK_MODE_CLIENT;
+        }
+
+        protected override int GetListenPort()
+        {
+            return 0;
         }
 
         protected override bool TryDeserializeMessage(MalockSocketStream stream, out MSG message)

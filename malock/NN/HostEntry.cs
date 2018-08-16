@@ -3,9 +3,58 @@
     using global::malock.Common;
     using System;
     using System.IO;
+    using System.Runtime.CompilerServices;
 
     public class HostEntry // aLIEz
     {
+        public static bool operator ==(HostEntry x, HostEntry y)
+        {
+            object xoo = x;
+            object yoo = y;
+            if (xoo == yoo || xoo == null && yoo == null)
+            {
+                return true;
+            }
+            if (xoo != null && yoo == null)
+            {
+                return false;
+            }
+            if (xoo == null && yoo != null)
+            {
+                return false;
+            }
+            return x.Equals(y);
+        }
+
+        public static bool operator !=(HostEntry x, HostEntry y)
+        {
+            return !(x == y);
+        }
+
+        public override bool Equals(object obj)
+        {
+            HostEntry key = obj as HostEntry;
+            if (key == null)
+            {
+                return false;
+            }
+            if (RuntimeHelpers.Equals(this, obj))
+            {
+                return true;
+            }
+            if (this.Primary.Address == key.Primary.Address &&
+                this.Standby.Address == key.Standby.Address)
+            {
+                return true;
+            }
+            if (this.Primary.Address == key.Standby.Address &&
+                this.Standby.Address == key.Primary.Address)
+            {
+                return true;
+            }
+            return false;
+        }
+
         public sealed class Host
         {
             public bool Available
@@ -37,7 +86,7 @@
                     throw new ArgumentNullException("writer");
                 }
                 writer.Write(this.Available);
-                writer.Write(this.Address);
+                MalockMessage.WriteStringToStream(writer, this.Address);
             }
 
             internal bool Deserialize(BinaryReader reader)
@@ -163,6 +212,15 @@
             this.Standby.Serialize(writer);
         }
 
+        public static HostEntry Deserialize(Stream stream)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream");
+            }
+            return Deserialize(new BinaryReader(stream));
+        }
+
         public static HostEntry Deserialize(BinaryReader reader)
         {
             HostEntry entry;
@@ -170,8 +228,21 @@
             return entry;
         }
 
+        public static bool TryDeserialize(Stream stream, out HostEntry entry)
+        {
+            if (stream == null)
+            {
+                throw new ArgumentNullException("stream");
+            }
+            return TryDeserialize(new BinaryReader(stream), out entry);
+        }
+
         public static bool TryDeserialize(BinaryReader reader, out HostEntry entry)
         {
+            if (reader == null)
+            {
+                throw new ArgumentNullException("reader");
+            }
             entry = null;
             do
             {

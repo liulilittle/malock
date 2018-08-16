@@ -13,8 +13,10 @@
         private MalockSocket preferred = null; // 首选服务器索引
         private DateTime firsttime = DateTime.MinValue;
         private readonly object syncobj = new object();
+        private readonly object state = null;
         private readonly MixEvent<EventHandler<MalockNetworkMessage>> messageevents = new MixEvent<EventHandler<MalockNetworkMessage>>();
         private readonly MixEvent<EventHandler> abortedevents = new MixEvent<EventHandler>();
+        private readonly MixEvent<EventHandler> cconnectedevents = new MixEvent<EventHandler>();
         private ConcurrentDictionary<MalockSocket, DateTime> abortedtime = new ConcurrentDictionary<MalockSocket, DateTime>();
 
         private const int BESTMAXCONNECTTIME = 1000;
@@ -28,6 +30,17 @@
             remove
             {
                 this.messageevents.Remove(value);
+            }
+        }
+        public virtual event EventHandler Connected
+        {
+            add
+            {
+                this.cconnectedevents.Add(value);
+            }
+            remove
+            {
+                this.cconnectedevents.Remove(value);
             }
         }
         public virtual event EventHandler Aborted
@@ -90,11 +103,39 @@
         /// <param name="identity">代表客户端唯一的身份标识</param>
         /// <param name="mainuseNode">主用服务器主机地址</param>
         /// <param name="standbyNode">备用服务器主机地址</param>
-        internal MalockMixClient(string identity, string mainuseNode, string standbyNode)
+        /// <param name="state">自定标记的状态对象</param>
+        internal MalockMixClient(string identity, string mainuseNode, string standbyNode, object state)
         {
+            if (identity == null)
+            {
+                throw new ArgumentNullException("identity");
+            }
+            if (identity.Length <= 0)
+            {
+                throw new ArgumentOutOfRangeException("identity");
+            }
+            if (mainuseNode == null)
+            {
+                throw new ArgumentNullException("mainuseNode");
+            }
+            if (mainuseNode.Length <= 0)
+            {
+                throw new ArgumentOutOfRangeException("mainuseNode");
+            }
+            if (standbyNode == null)
+            {
+                throw new ArgumentNullException("standbyNode");
+            }
+            if (standbyNode.Length <= 0)
+            {
+                throw new ArgumentOutOfRangeException("standbyNode");
+            }
             this.Identity = identity;
-            sockets[0] = new MalockSocket(identity, mainuseNode, this.GetLinkMode());
-            sockets[1] = new MalockSocket(identity, standbyNode, this.GetLinkMode());
+            this.state = state;
+            int linkMode = this.GetLinkMode();
+            int listenport = this.GetListenPort();
+            sockets[0] = new MalockSocket(identity, mainuseNode, listenport, linkMode);
+            sockets[1] = new MalockSocket(identity, standbyNode, listenport, linkMode);
             for (int i = 0; i < sockets.Length; i++)
             {
                 MalockSocket socket = sockets[i];
@@ -103,6 +144,13 @@
                 socket.Received += this.SocketReceived;
             }
         }
+
+        protected virtual object GetStateObject()
+        {
+            return this.state;
+        }
+
+        protected abstract int GetListenPort();
 
         protected abstract int GetLinkMode();
 
@@ -178,6 +226,11 @@
         }
 
         protected virtual void OnAborted(EventArgs e)
+        {
+            this.abortedevents.Invoke((evt) => evt(this, e));
+        }
+
+        protected virtual void OnConnected(EventArgs e)
         {
             this.abortedevents.Invoke((evt) => evt(this, e));
         }
@@ -273,47 +326,50 @@
 
         private void SocketConnected(object sender, EventArgs e)
         {
-            MalockSocket currentsocket = null;
-            TimeSpan ts = TimeSpan.MinValue;
-            bool readying = false;
-            lock (this.syncobj)
+            MalockSocket currentsocket = (MalockSocket)sender;
+            this.OnConnected(currentsocket);
+            do
             {
-                ts = unchecked(DateTime.Now - this.firsttime);
-                currentsocket = (MalockSocket)sender;
-                if (this.preferred == null)
+                TimeSpan ts = TimeSpan.MinValue;
+                bool readying = false;
+                lock (this.syncobj)
                 {
-                    this.preferred = currentsocket;
-                }
-                else if (ts.TotalMilliseconds <= BESTMAXCONNECTTIME)
-                {
-                    if (sender == sockets[0])
+                    ts = unchecked(DateTime.Now - this.firsttime);
+                    if (this.preferred == null)
                     {
                         this.preferred = currentsocket;
                     }
-                }
-                if (!this.IsReady)
-                {
-                    if (this.AllIsAvailable() || (ts.TotalMilliseconds > BESTMAXCONNECTTIME && this.Available))
+                    else if (ts.TotalMilliseconds <= BESTMAXCONNECTTIME)
                     {
-                        readying = true;
-                        this.IsReady = true;
+                        if (sender == sockets[0])
+                        {
+                            this.preferred = currentsocket;
+                        }
                     }
-                }
-                if (currentsocket == sockets[0]) // 它可能只是链接发生中断，但服务器本身是可靠的，所以不需要平滑到备用服务器。
-                {
-                    TimeSpan tv = unchecked(DateTime.Now - this.GetAbortTime(currentsocket));
-                    if (tv.TotalMilliseconds < Malock.SmoothingTime)
+                    if (!this.IsReady)
                     {
-                        this.preferred = currentsocket;
+                        if (this.AllIsAvailable() || (ts.TotalMilliseconds > BESTMAXCONNECTTIME && this.Available))
+                        {
+                            readying = true;
+                            this.IsReady = true;
+                        }
                     }
+                    if (currentsocket == sockets[0]) // 它可能只是链接发生中断，但服务器本身是可靠的，所以不需要平滑到备用服务器。
+                    {
+                        TimeSpan tv = unchecked(DateTime.Now - this.GetAbortTime(currentsocket));
+                        if (tv.TotalMilliseconds < Malock.SmoothingTime)
+                        {
+                            this.preferred = currentsocket;
+                        }
+                    }
+                    currentsocket = this.preferred;
+                    Console.Title = "preferred->" + this.preferred.Address.ToString();
                 }
-                currentsocket = this.preferred;
-                Console.Title = "preferred->" + this.preferred.Address.ToString();
-            }
-            if (readying)
-            {
-                this.OnReady(currentsocket);
-            }
+                if (readying)
+                {
+                    this.OnReady(currentsocket);
+                }
+            } while (false);
         }
 
         protected virtual void OnReady(EventArgs e)
