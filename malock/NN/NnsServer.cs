@@ -13,7 +13,7 @@
         private EventHandler onConnectedHandler = null;
         private EventHandler<MalockSocketStream> onReceivedHandler = null;
 
-        public NnsServer(int port, string standbyMachine)
+        public NnsServer(int port, string standbyNode)
         {
             this.malockListener = new MalockSocketListener(port);
             this.nnsTable = new NnsTable();

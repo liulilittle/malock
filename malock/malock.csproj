@@ -66,11 +66,13 @@
     <Compile Include="Common\IMalockSocket.cs" />
     <Compile Include="NN\NnsError.cs" />
     <Compile Include="NN\NnsTable.cs" />
+    <Compile Include="Server\MalockConfiguration.cs" />
+    <Compile Include="Server\MalockNnsClient.cs" />
     <Compile Include="Server\MalockServer.cs" />
     <Compile Include="Server\MalockSocket.cs" />
     <Compile Include="Server\MalockSocketListener.cs" />
     <Compile Include="Server\MalockSocketStream.cs" />
-    <Compile Include="Server\MalockStandby.cs" />
+    <Compile Include="Server\MalockStandbyClient.cs" />
     <Compile Include="Server\MalockTable.cs" />
     <Compile Include="Common\MalockMessage.cs" />
     <Compile Include="Server\MalockEngine.cs" />

@@ -17,7 +17,7 @@
         private bool connected = false;
         private string identity = null;
         private MalockSocketAuxiliary auxiliary = null;
-        private Func<MemoryStream, bool> socketsend = null;
+        private Func<MemoryStream, bool> socketsendproc = null;
         private static readonly byte[] emptrybufs = new byte[0];
 
         public event EventHandler Aborted = null;
@@ -32,7 +32,7 @@
             }
             this.socket = socket;
             this.socket.NoDelay = true;
-            this.socketsend = (ms) => auxiliary.Send(ms.GetBuffer(), 0, unchecked((int)ms.Length));
+            this.socketsendproc = (ms) => auxiliary.Send(ms.GetBuffer(), 0, unchecked((int)ms.Length));
             this.auxiliary = new MalockSocketAuxiliary(this.syncobj, this.ProcessAborted, this.ProcessReceived);
             this.auxiliary.SocketObject = socket;
         }
@@ -187,7 +187,7 @@
 
         public bool Send(byte[] buffer, int ofs, int len)
         {
-            return auxiliary.Combine(buffer, ofs, len, this.socketsend);
+            return auxiliary.Combine(buffer, ofs, len, this.socketsendproc);
         }
     }
 }

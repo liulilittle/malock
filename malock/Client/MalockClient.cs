@@ -4,8 +4,8 @@
 
     public class MalockClient : MalockMixClient<MSG>
     {
-        public MalockClient(string identity, string mainuseMachine, string standbyMachine) :
-            base(identity, mainuseMachine, standbyMachine)
+        public MalockClient(string identity, string mainuseNode, string standbyNode) :
+            base(identity, mainuseNode, standbyNode)
         {
 
         }

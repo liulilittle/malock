@@ -9,7 +9,7 @@
     /// I used to cover the sky light with my hands Wandering the universe is too primitive 
     /// I used to be in heaven and earth and everything to say you're alright
     /// </summary>
-    public class MalockTable
+    internal class MalockTable
     {
         public class LockerInfo
         {

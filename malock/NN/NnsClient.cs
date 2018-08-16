@@ -6,8 +6,8 @@
 
     public class NnsClient : MalockMixClient<MSG> 
     {
-        public NnsClient(string identity, string mainuseMachine, string standbyMachine) :
-            base(identity, mainuseMachine, standbyMachine)
+        public NnsClient(string identity, string mainuseNode, string standbyNode) :
+            base(identity, mainuseNode, standbyNode)
         {
 
         }
@@ -57,13 +57,19 @@
             else
             {
                 Exception exception = null;
-                if (!MSG.TryInvokeAsync(this, this.NewMessage(key,
-                        MSG.CLIENT_COMMAND_QUERYHOSTENTRYINFO), timeout,
+                if (!MSG.TryInvokeAsync(this, this.NewMessage(key, MSG.CLIENT_COMMAND_QUERYHOSTENTRYINFO), timeout,
                     (errno, message, stream) =>
                 {
                     if (errno == MSG.Mappable.ERROR_NOERROR)
                     {
-                        state(NnsError.kSuccess);
+                        if (message.Command != MSG.CLIENT_COMMAND_QUERYHOSTENTRYINFO)
+                        {
+                            state(NnsError.kError);
+                        }
+                        else
+                        {
+                            state(NnsError.kSuccess);
+                        }
                     }
                     else if (errno == MSG.Mappable.ERROR_ABORTED)
                     {

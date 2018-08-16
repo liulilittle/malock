@@ -3,7 +3,7 @@
     using System;
     using System.Diagnostics;
 
-    public sealed class MalockTaskInfo : EventArgs
+    internal sealed class MalockTaskInfo : EventArgs
     {
         public MalockTaskType Type { get; set; }
 

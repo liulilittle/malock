@@ -11,24 +11,20 @@
         private MalockEngine malockEngine = null;
         private EventHandler onAboredHandler = null;
         private EventHandler onConnectedHandler = null;
+        private MalockConfiguration configuration = null;
         private EventHandler<MalockSocketStream> onReceivedHandler = null;
         /// <summary>
         /// 创建一个双机热备的 malock 服务器
         /// </summary>
-        /// <param name="port">指定当前服务器实例侦听连接的端口</param>
-        /// <param name="standbyMachine">指定一个有效的备用服务器主机地址</param>
-        public MalockServer(int port, string standbyMachine)
+        public MalockServer(MalockConfiguration configuration)
         {
-            if (port <= 0 || port > short.MaxValue)
+            if (configuration == null)
             {
-                throw new ArgumentOutOfRangeException("The specified server listening port is outside the 0~65535 range");
+                throw new ArgumentNullException("configuration it cannot be considered a null");
             }
-            if (string.IsNullOrEmpty(standbyMachine))
-            {
-                throw new ArgumentOutOfRangeException("You have specified an invalid standby server host address that is not allowed to be null or empty");
-            }
-            this.malockEngine = new MalockEngine(new MalockTable(), standbyMachine);
-            this.malockListener = new MalockSocketListener(port);
+            this.configuration = configuration;
+            this.malockEngine = new MalockEngine(new MalockTable(), configuration);
+            this.malockListener = new MalockSocketListener(configuration.Port);
             do
             {
                 this.onAboredHandler = this.ProcessAborted;

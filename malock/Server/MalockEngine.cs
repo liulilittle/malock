@@ -6,27 +6,40 @@
     using HandleInfo = global::malock.Client.HandleInfo;
     using System.Collections.Generic;
 
-    public sealed class MalockEngine
+    internal sealed class MalockEngine
     {
         private MalockTaskPoll malockTaskPoll = null;
         private MalockTable malockTable = null;
-        private MalockStandby malockStandby = null;
+        private MalockConfiguration configuration = null;
+        private MalockNnsClient malockNnsClient = null;
+        private MalockStandbyClient malockStandbyClient = null;
         private Dictionary<string, int> ackPipelineCounter = new Dictionary<string, int>();
 
-        public MalockEngine(MalockTable malockTable, string standbyMachine)
+        public MalockEngine(MalockTable malockTable, MalockConfiguration configuration)
         {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException("configuration");
+            }
             if (malockTable == null)
             {
                 throw new ArgumentNullException("malockTable");
             }
+            this.configuration = configuration;
             this.malockTable = malockTable;
             this.malockTaskPoll = new MalockTaskPoll(this);
-            this.malockStandby = new MalockStandby(this, standbyMachine);
+            this.malockStandbyClient = new MalockStandbyClient(this, configuration);
+            this.malockNnsClient = new MalockNnsClient(configuration.Identity, configuration.NnsNode, configuration.StandbyNode);
         }
 
-        public MalockStandby GetStandby()
+        public MalockStandbyClient GetStandbyClient()
         {
-            return this.malockStandby;
+            return this.malockStandbyClient;
+        }
+
+        public MalockConfiguration GetConfiguration()
+        {
+            return this.configuration;
         }
 
         public MalockTaskPoll GetPoll()
@@ -50,7 +63,7 @@
             {
                 if (MalockMessage.TrySendMessage(info.Socket, message))
                 {
-                    MalockMessage.TrySendMessage(this.malockStandby, message);
+                    MalockMessage.TrySendMessage(this.malockStandbyClient, message);
                     return true;
                 }
                 else
@@ -129,7 +142,7 @@
                 {
                     MalockMessage.TrySendMessage(info.Socket, message);
                 }
-                MalockMessage.TrySendMessage(malockStandby, message);
+                MalockMessage.TrySendMessage(malockStandbyClient, message);
             }
             this.AckPipelineEnter(info);
             return true;
@@ -156,7 +169,7 @@
                 this.AckPipelineEnter(info.Identity, keys);
             } while (false);
             MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.SERVER_COMMAND_SYN_FREE, info.Sequence, -1);
-            MalockMessage.TrySendMessage(this.malockStandby, message);
+            MalockMessage.TrySendMessage(this.malockStandbyClient, message);
             return true;
         }
 

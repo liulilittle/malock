@@ -88,13 +88,13 @@
         /// 创建一个双机热备的 malock 客户端
         /// </summary>
         /// <param name="identity">代表客户端唯一的身份标识</param>
-        /// <param name="mainuseMachine">主用服务器主机地址</param>
-        /// <param name="standbyMachine">备用服务器主机地址</param>
-        public MalockMixClient(string identity, string mainuseMachine, string standbyMachine)
+        /// <param name="mainuseNode">主用服务器主机地址</param>
+        /// <param name="standbyNode">备用服务器主机地址</param>
+        internal MalockMixClient(string identity, string mainuseNode, string standbyNode)
         {
             this.Identity = identity;
-            sockets[0] = new MalockSocket(identity, mainuseMachine, this.GetLinkMode());
-            sockets[1] = new MalockSocket(identity, standbyMachine, this.GetLinkMode());
+            sockets[0] = new MalockSocket(identity, mainuseNode, this.GetLinkMode());
+            sockets[1] = new MalockSocket(identity, standbyNode, this.GetLinkMode());
             for (int i = 0; i < sockets.Length; i++)
             {
                 MalockSocket socket = sockets[i];

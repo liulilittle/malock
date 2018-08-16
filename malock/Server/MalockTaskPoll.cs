@@ -8,7 +8,7 @@
     using MalockTaskTable = System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Generic.LinkedList<MalockTaskInfo>>;
     using Runnable = global::malock.Client.EventWaitHandle;
 
-    public sealed class MalockTaskPoll
+    internal sealed class MalockTaskPoll
     {
         private readonly ConcurrentDictionary<MalockTaskType, MalockTaskTable> tables = null;
         private readonly MalockEngine engine = null;

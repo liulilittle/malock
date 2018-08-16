@@ -1,6 +1,6 @@
 ﻿namespace malock.Server
 {
-    public enum MalockTaskType : byte
+    internal enum MalockTaskType : byte
     {
         kEnter,
         kExit,

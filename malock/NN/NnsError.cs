@@ -5,5 +5,6 @@
         kSuccess,
         kTimeout,
         kAborted,
+        kError,
     }
 }

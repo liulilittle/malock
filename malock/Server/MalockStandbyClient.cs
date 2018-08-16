@@ -8,10 +8,11 @@
     using MalockInnetSocket = global::malock.Client.MalockSocket;
     using MalockInnetSocketStream = global::malock.Client.MalockSocketStream;
 
-    public sealed class MalockStandby : IMalockSocket
+    internal class MalockStandbyClient : IMalockSocket
     {
         private readonly MalockInnetSocket socket = null;
         private readonly MalockEngine engine = null;
+        private readonly MalockConfiguration configuration = null;
 
         public object Tag
         {
@@ -32,16 +33,46 @@
             }
         }
 
-        public MalockStandby(MalockEngine engine, string address)
+        public MalockStandbyClient(MalockEngine engine, MalockConfiguration configuration)
         {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException("configuration");
+            }
             if (engine == null)
             {
                 throw new ArgumentNullException("engine");
             }
             this.engine = engine;
-            this.socket = new MalockInnetSocket(string.Format("standby{0}", Environment.TickCount), address, MalockMessage.LINK_MODE_SERVER);
+            this.configuration = configuration;
+            this.socket = new MalockInnetSocket(configuration.Identity, this.GetAddress(configuration), 
+                MalockMessage.LINK_MODE_SERVER);
             this.socket.Received += this.OnReceived;
             this.socket.Run();
+        }
+
+        protected virtual MalockConfiguration GetConfiguration()
+        {
+            return this.configuration;
+        }
+
+        protected virtual MalockEngine GetEngine()
+        {
+            return this.engine;
+        }
+
+        protected virtual IMalockSocket GetInnerSocket()
+        {
+            return this.socket;
+        }
+
+        protected virtual string GetAddress(MalockConfiguration configuration)
+        {
+            if (configuration == null)
+            {
+                throw new ArgumentNullException("configuration");
+            }
+            return configuration.StandbyNode;
         }
 
         public bool Send(byte[] buffer, int ofs, int len)

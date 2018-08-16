@@ -7,7 +7,10 @@
     {
         static void Main(string[] args)
         {
-            MalockServer server = new MalockServer(6801, "127.0.0.1:6800");
+            MalockConfiguration configuration = new MalockConfiguration("malock-server-node-002",
+                6801, "127.0.0.1:6800", "127.0.0.1:6900", "127.0.0.1:6901");
+
+            MalockServer server = new MalockServer(configuration);
             server.Run();
 
             while (true)

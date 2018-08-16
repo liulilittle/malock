@@ -84,8 +84,10 @@
 
         public new TMessage Message
         {
-            get;
-            private set;
+            get
+            {
+                return (TMessage)base.Message;
+            }
         }
 
         internal MalockNetworkMessage(MalockMixClient<TMessage> client, IMalockSocket socket, Stream stream, TMessage message)
