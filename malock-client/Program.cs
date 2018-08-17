@@ -5,7 +5,6 @@
     using malock.NN;
     using System;
     using System.Diagnostics;
-    using System.Net;
     using Interlocked = System.Threading.Interlocked;
 
     class Program
@@ -15,10 +14,20 @@
             NnsClient nns = new NnsClient("malock-client-node-001", "127.0.0.1:6900", "127.0.0.1:6901").Run();
             nns.Ready += delegate
             {
-                nns.QueryHostEntryAsync("test013", (error, entry) =>
+                int count = 0;
+                for (int i = 0; i < 4; i++)
                 {
-                    Console.WriteLine(entry);
-                });
+                    EventWaitHandle.Run(() =>
+                    {
+                        for (int j = 0; j < 1000; j++)
+                        {
+                            nns.QueryHostEntryAsync("test013", (error, entry) =>
+                            {
+                                Console.WriteLine("count {0}, {1}", Interlocked.Increment(ref count), entry);
+                            });
+                        }
+                    });
+                }
             };
         }
 

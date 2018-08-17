@@ -22,6 +22,14 @@
         /// </summary>
         public const int MaxEnterCount = 10000;
         /// <summary>
+        /// 默认超时时间
+        /// </summary>
+        public const int DefaultTimeout = 3000;
+        /// <summary>
+        /// 缓存过期时间
+        /// </summary>
+        public const int CacheExpiredTime = 1000 * 60 * 15;
+        /// <summary>
         /// 确认流水线周期时间
         /// </summary>
         public const int AckPipelineInterval = 333;

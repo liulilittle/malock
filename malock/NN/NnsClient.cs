@@ -2,13 +2,41 @@
 {
     using global::malock.Client;
     using global::malock.Common;
+    using global::malock.Core;
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
+    using System.Threading;
     using MSG = global::malock.Common.MalockNameNodeMessage;
 
     public class NnsClient : MalockMixClient<MSG> 
     {
+        private class HostEntryCache
+        {
+            public HostEntry entry = null;
+            public DateTime ts = DateTime.MinValue;
+            private AsyncAutoResetEvent events = new AsyncAutoResetEvent(true);
+
+            public void WaitOne(Action<bool> state)
+            {
+                this.events.WaitOne(state);
+            }
+
+            public void Set(bool state)
+            {
+                this.events.Set(state);
+            }
+
+            public bool IsExpired()
+            {
+                TimeSpan ts = unchecked(DateTime.Now - this.ts);
+                return ts.TotalMilliseconds > Malock.CacheExpiredTime;
+            }
+        }
+
+        private readonly Dictionary<string, HostEntryCache> caches = new Dictionary<string, HostEntryCache>();
+
         public NnsClient(string identity, string mainuseNode, string standbyNode)
             : this(identity, mainuseNode, standbyNode, null)
         {
@@ -36,9 +64,47 @@
             return MSG.TryDeserialize(stream.Stream, out message);
         }
 
+        public NnsError TryQueryHostEntry(string key, out HostEntry entry)
+        {
+            return TryQueryHostEntry(key, Malock.DefaultTimeout, out entry);
+        }
+
+        public NnsError TryQueryHostEntry(string key, int timeout, out HostEntry entry)
+        {
+            if (key == null)
+            {
+                throw new ArgumentNullException("key");
+            }
+            if (key.Length <= 0)
+            {
+                throw new ArgumentOutOfRangeException("key");
+            }
+            NnsError result = NnsError.kError;
+            HostEntry hosts = null;
+            entry = null;
+            using (ManualResetEvent events = new ManualResetEvent(false))
+            {
+                InternalQueryHostEntryAsync(key, timeout, (error, info) =>
+                {
+                    result = error;
+                    if (error == NnsError.kSuccess)
+                    {
+                        hosts = info;
+                    }
+                    events.Set();
+                });
+                events.WaitOne();
+                if (result == NnsError.kSuccess)
+                {
+                    entry = hosts;
+                }
+            }
+            return result;
+        }
+
         public void QueryHostEntryAsync(string key, Action<NnsError, HostEntry> state)
         {
-            this.InternalQueryHostEntryAsync(key, 3000, state, false);
+            this.InternalQueryHostEntryAsync(key, Malock.DefaultTimeout, state);
         }
 
         public void QueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state)
@@ -55,10 +121,51 @@
             {
                 throw new ArgumentOutOfRangeException("key");
             }
-            this.InternalQueryHostEntryAsync(key, timeout, state, false);
+            this.InternalQueryHostEntryAsync(key, timeout, state);
         }
 
-        private void InternalQueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state, bool retrying)
+        private void InternalQueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state)
+        {
+            HostEntryCache cache;
+            lock (this.caches)
+            {
+                if (!this.caches.TryGetValue(key, out cache))
+                {
+                    cache = new HostEntryCache();
+                    this.caches.Add(key, cache);
+                }
+            }
+            if (!cache.IsExpired())
+            {
+                state(NnsError.kSuccess, cache.entry);
+            }
+            else
+            {
+                cache.WaitOne((callbackstate) =>
+                {
+                    if (!cache.IsExpired())
+                    {
+                        cache.Set(callbackstate);
+                        state(NnsError.kSuccess, cache.entry);
+                    }
+                    else
+                    {
+                        this.InternalRemoteQueryHostEntryAsync(key, timeout, (error, entry) =>
+                        {
+                            if (error == NnsError.kSuccess)
+                            {
+                                cache.entry = entry;
+                                cache.ts = DateTime.Now;
+                            }
+                            state(error, entry);
+                            cache.Set(callbackstate);
+                        }, false);
+                    }
+                });
+            }
+        }
+
+        private void InternalRemoteQueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state, bool retrying)
         {
             if ((retrying && timeout <= 0) || (timeout <= 0 && timeout != -1))
             {
@@ -72,18 +179,43 @@
             {
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
-                Action<NnsClient> reacquire = (self) =>
+                Action<NnsClient> onaborted = (self) =>
                 {
-                    stopwatch.Stop();
-                    if (timeout != -1)
+                    if (!this.Available)
                     {
-                        timeout -= Convert.ToInt32(stopwatch.ElapsedMilliseconds);
+                        state(NnsError.kAborted, null);
                     }
-                    this.InternalQueryHostEntryAsync(key, timeout, state, timeout == -1 ? false : true);
+                    else
+                    {
+                        var delaytick = Malock.NewTimer();
+                        delaytick.Interval = Malock.SmoothingTime;
+                        delaytick.Tick += delegate
+                        {
+                            long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;
+                            {
+                                stopwatch.Stop();
+                                delaytick.Stop();
+                            }
+                            if (!this.Available)
+                            {
+                                state(NnsError.kAborted, null);
+                            }
+                            else
+                            {
+                                if (timeout != -1)
+                                {
+                                    timeout -= Convert.ToInt32(elapsedMilliseconds);
+                                }
+                                this.InternalRemoteQueryHostEntryAsync(key, timeout, state, timeout == -1 ? false : true);
+                            }
+                        };
+                        delaytick.Start();
+                    }
                 };
                 Action<int, MalockMessage, Stream> callback = (errno, response, stream) =>
                 {
-                    if (errno == MSG.Mappable.ERROR_NOERROR)
+                    bool closedstopwatch = true;
+                    if (errno == MalockMessage.Mappable.ERROR_NOERROR)
                     {
                         if (response.Command != MSG.CLIENT_COMMAND_QUERYHOSTENTRYINFO)
                         {
@@ -102,36 +234,26 @@
                             }
                         }
                     }
-                    else if (errno == MSG.Mappable.ERROR_ABORTED)
+                    else if (errno == MalockMessage.Mappable.ERROR_ABORTED)
                     {
-                        if (this.Available)
-                        {
-                            reacquire(this);
-                        }
-                        else
-                        {
-                            state(NnsError.kAborted, null);
-                        }
+                        closedstopwatch = false;
+                        onaborted(this);
                     }
-                    else if (errno == MSG.Mappable.ERROR_TIMEOUT)
+                    else if (errno == MalockMessage.Mappable.ERROR_TIMEOUT)
                     {
                         state(NnsError.kTimeout, null);
+                    }
+                    if (closedstopwatch)
+                    {
+                        stopwatch.Stop();
                     }
                 };
                 MalockMessage message = this.NewMessage(key, MSG.CLIENT_COMMAND_QUERYHOSTENTRYINFO);
                 Exception exception = null;
-                if (!MSG.TryInvokeAsync(this, message, timeout, callback, ref exception))
+                if (!MalockMessage.TryInvokeAsync(this, message, timeout, callback, ref exception))
                 {
-                    if (this.Available)
-                    {
-                        reacquire(this);
-                    }
-                    else
-                    {
-                        state(NnsError.kAborted, null);
-                    }
+                    onaborted(this);
                 }
-                stopwatch.Stop();
             }
         }
 

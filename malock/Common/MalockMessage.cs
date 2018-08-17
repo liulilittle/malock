@@ -206,7 +206,7 @@
                     foreach (KeyValuePair<int, Mappable> kv in msgmap)
                     {
                         Mappable map = kv.Value;
-                        if (map == null || map.Timeout < 0)
+                        if (map == null || map.Timeout == -1)
                         {
                             continue;
                         }

@@ -50,6 +50,8 @@
     <Compile Include="Common\MalockNameNodeMessage.cs" />
     <Compile Include="Common\MalockDataNodeMessage.cs" />
     <Compile Include="Common\MalockNetworkMessage.cs" />
+    <Compile Include="Core\AsyncAutoResetEvent.cs" />
+    <Compile Include="Core\StackAutoResetEvent.cs" />
     <Compile Include="Core\MixEvent.cs" />
     <Compile Include="Core\LinkedListIterator.cs" />
     <Compile Include="Core\SpinLock.cs" />
