@@ -64,6 +64,11 @@
 
         private static readonly string[] EmptryKeyNames = new string[0];
 
+        public object GetSynchronizationObject()
+        {
+            return this.syncobj;
+        }
+
         protected virtual bool AllocEnterKey(string key)
         {
             if (key == null)

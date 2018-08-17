@@ -104,7 +104,7 @@
                 do
                 {
                     string s;
-                    if (!MalockMessage.TryFromStreamInRead(reader, out s))
+                    if (!MalockMessage.TryFromStringInReadStream(reader, out s))
                     {
                         return false;
                     }
@@ -132,7 +132,7 @@
             set;
         }
 
-        internal HostEntry()
+        internal HostEntry() 
         {
             this.Primary = new Host();
             this.Standby = new Host();
@@ -251,17 +251,16 @@
             entry = null;
             do
             {
-                HostEntry hostentry = new HostEntry();
-                if (!hostentry.Primary.Deserialize(reader))
+                HostEntry host = new HostEntry();
+                if (!host.Primary.Deserialize(reader))
                 {
                     return false;
                 }
-                Host standby = new Host();
-                if (!hostentry.Standby.Deserialize(reader))
+                if (!host.Standby.Deserialize(reader))
                 {
                     return false;
                 }
-                entry = hostentry;
+                entry = host;
             } while (false);
             return true;
         }

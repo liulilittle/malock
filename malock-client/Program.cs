@@ -33,10 +33,10 @@
 
         static void Main(string[] args)
         {
-            NN_Test();
-
-            Console.ReadKey(false);
-
+            /*
+                NN_Test();
+                Console.ReadKey(false);
+            */
             MalockClient malock = Malock.NewClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             malock.Ready += delegate
             {

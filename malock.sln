@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "malock-client", "malock-cli
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "malock-nns-server6900", "malock-nns-server6900\malock-nns-server6900.csproj", "{5E3D1216-90E5-4903-AC22-271A9EE83B17}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "malock-nns-server6901", "malock-nns-server6901\malock-nns-server6901.csproj", "{349AC671-9900-4C2B-ACAE-E8B8BFDD56EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{5E3D1216-90E5-4903-AC22-271A9EE83B17}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5E3D1216-90E5-4903-AC22-271A9EE83B17}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5E3D1216-90E5-4903-AC22-271A9EE83B17}.Release|Any CPU.Build.0 = Release|Any CPU
+		{349AC671-9900-4C2B-ACAE-E8B8BFDD56EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{349AC671-9900-4C2B-ACAE-E8B8BFDD56EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{349AC671-9900-4C2B-ACAE-E8B8BFDD56EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{349AC671-9900-4C2B-ACAE-E8B8BFDD56EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

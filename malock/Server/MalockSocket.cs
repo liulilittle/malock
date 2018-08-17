@@ -195,7 +195,7 @@
                         {
                             this.LinkMode = br.ReadByte();
                             int port = br.ReadUInt16();
-                            this.identity = MalockMessage.FromStreamInRead(br);
+                            this.identity = MalockMessage.FromStringInReadStream(br);
                             this.remoteport = ipep.Port;
                             this.address = Ipep.ToIpepString(ipep.Address.ToString(), port);
                         }

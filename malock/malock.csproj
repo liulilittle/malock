@@ -67,6 +67,7 @@
     <Compile Include="NN\NnsServer.cs" />
     <Compile Include="Common\IMalockSocket.cs" />
     <Compile Include="NN\NnsError.cs" />
+    <Compile Include="NN\NnsStanbyClient.cs" />
     <Compile Include="NN\NnsTable.cs" />
     <Compile Include="Server\MalockConfiguration.cs" />
     <Compile Include="Server\MalockNnsClient.cs" />

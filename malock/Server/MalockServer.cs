@@ -213,6 +213,16 @@
                 malock.Exit(message.Identity, out keys);
                 this.malockEngine.AckPipelineEnter(message.Identity, keys);
             }
+            else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
+            {
+                this.malockEngine.GetAllInfo(new MalockTaskInfo()
+                {
+                    Identity = socket.Identity,
+                    Socket = socket,
+                    Timeout = -1,
+                    Type = MalockTaskType.kGetAllInfo
+                });
+            }
         }
 
         private void ProcessMessage(MalockSocket socket, MalockDataNodeMessage message)

@@ -78,12 +78,12 @@
             }
             info.Available = br.ReadBoolean();
             string s;
-            if (!MalockMessage.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStringInReadStream(br, out s))
             {
                 return null;
             }
             info.Key = s;
-            if (!MalockMessage.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStringInReadStream(br, out s))
             {
                 return null;
             }

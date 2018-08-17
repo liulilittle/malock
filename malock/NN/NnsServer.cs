@@ -12,9 +12,22 @@
         private EventHandler onAboredHandler = null;
         private EventHandler onConnectedHandler = null;
         private EventHandler<MalockSocketStream> onReceivedHandler = null;
+        private NnsStanbyClient nnsStanbyClient = null;
 
-        public NnsServer(int port, string standbyNode)
+        public NnsServer(string identity, int port, string standbyNode)
         {
+            if (port <= 0 || port > short.MaxValue)
+            {
+                throw new ArgumentOutOfRangeException("The specified server listening port is outside the 0~65535 range");
+            }
+            if (string.IsNullOrEmpty(standbyNode))
+            {
+                throw new ArgumentOutOfRangeException("You have specified an invalid standby server host address that is not allowed to be null or empty");
+            }
+            if (string.IsNullOrEmpty(identity))
+            {
+                throw new ArgumentOutOfRangeException("You have specified an invalid node Identity");
+            }
             this.malockListener = new MalockSocketListener(port);
             this.nnsTable = new NnsTable();
             do
@@ -33,6 +46,7 @@
                     }
                 };
             } while (false);
+            this.nnsStanbyClient = new NnsStanbyClient(this.nnsTable, identity, standbyNode, port);
             this.onConnectedHandler = (sender, e) => this.ProcessAccept(sender, (MalockSocket)sender);
         }
 
@@ -48,7 +62,9 @@
 
         private void ProcessAccept(object sender, MalockSocket e)
         {
-            
+            /*
+             *  
+             */
         }
 
         private void ProcessReceived(object sender, MalockSocketStream e)
@@ -66,7 +82,8 @@
 
         private void QueryHostEntry(MalockSocket socket, int sequence, string key)
         {
-            HostEntry entry = this.nnsTable.GetEntry(key);
+            string identity;
+            HostEntry entry = this.nnsTable.GetEntry(key, out identity);
             MalockNameNodeMessage message = new MalockNameNodeMessage();
             message.Key = key;
             message.Sequence = sequence;
@@ -87,13 +104,33 @@
                     MalockMessage.TrySendMessage(socket, stream);
                 }
             }
+            if (entry != null && !string.IsNullOrEmpty(identity))
+            {
+                message = new MalockNameNodeMessage();
+                message.Key = key;
+                message.Identity = identity;
+                message.Sequence = MalockMessage.NewId();
+                message.Command = MalockNameNodeMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO;
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    using (BinaryWriter bw = new BinaryWriter(stream))
+                    {
+                        message.Serialize(bw);
+                        if (entry != null)
+                        {
+                            entry.Serialize(bw);
+                        }
+                        MalockMessage.TrySendMessage(this.nnsStanbyClient, stream);
+                    }
+                }
+            }
         }
 
-        private void DumpHostEntry(MalockSocket socket, int sequence)
+        private void DumpHostEntry(MalockSocket socket, MalockNameNodeMessage message)
         {
-            MalockNameNodeMessage message = new MalockNameNodeMessage();
-            message.Sequence = sequence;
-            message.Command = MalockMessage.COMMON_COMMAND_ERROR;
+            MalockNameNodeMessage msg = new MalockNameNodeMessage();
+            msg.Sequence = message.Sequence;
+            msg.Command = message.Command;
             do
             {
                 var hosts = this.nnsTable.GetAllHosts();
@@ -105,16 +142,15 @@
                         int count = 0;
                         foreach (var host in hosts)
                         {
-                            HostEntry entry = host.Entry;
-                            entry.Serialize(bw);
+                            host.Serialize(bw);
                             count++;
                         }
                         fixed (byte* pinned = stream.GetBuffer())
                         {
                             *(int*)pinned = count;
                         }
+                        MalockMessage.TrySendMessage(socket, message, stream.GetBuffer(), 0, unchecked((int)stream.Position));
                     }
-                    MalockMessage.TrySendMessage(socket, message, stream.GetBuffer(), 0, unchecked((int)stream.Position));
                 }
             } while (false);
         }
@@ -146,7 +182,19 @@
             }
             else if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_DUMPHOSTENTRYINFO)
             {
-                this.DumpHostEntry(socket, message.Sequence);
+                this.DumpHostEntry(socket, message);
+            }
+        }
+
+        private void SynQueryHostEntry(MalockSocket socket, string identity, string key, HostEntry entry)
+        {
+            if (entry == null || socket == null || string.IsNullOrEmpty(identity) || string.IsNullOrEmpty(key))
+            {
+                return;
+            }
+            lock (this.nnsTable.GetSynchronizationObject())
+            {
+                this.nnsTable.SetEntry(identity, key, entry);
             }
         }
 
@@ -154,11 +202,15 @@
         {
             if (message.Command == MalockNameNodeMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO)
             {
-
+                this.SynQueryHostEntry(socket, message.Identity, message.Key, HostEntry.Deserialize(stream));
             }
             else if (message.Command == MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO)
             {
                 this.RegisterHostEntry(socket, message.Sequence, HostEntry.Deserialize(stream));
+            }
+            else if (message.Command == MalockNameNodeMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO)
+            {
+                this.DumpHostEntry(socket, message);
             }
         }
 

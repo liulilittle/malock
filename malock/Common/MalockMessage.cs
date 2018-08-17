@@ -121,17 +121,17 @@
             }
         }
 
-        protected internal static string FromStreamInRead(BinaryReader reader)
+        protected internal static string FromStringInReadStream(BinaryReader reader)
         {
             string s;
-            if (!MalockMessage.TryFromStreamInRead(reader, out s))
+            if (!MalockMessage.TryFromStringInReadStream(reader, out s))
             {
                 throw new EndOfStreamException();
             }
             return s;
         }
 
-        protected internal static bool TryFromStreamInRead(BinaryReader reader, out string s)
+        protected internal static bool TryFromStringInReadStream(BinaryReader reader, out string s)
         {
             s = null;
             if (reader == null)

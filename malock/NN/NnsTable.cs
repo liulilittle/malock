@@ -1,8 +1,10 @@
 ﻿namespace malock.NN
 {
+    using global::malock.Common;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.IO;
 
     public class NnsTable
     {
@@ -20,6 +22,12 @@
         public class Host
         {
             public HostEntry Entry
+            {
+                get;
+                internal set;
+            }
+
+            public string Identity
             {
                 get;
                 private set;
@@ -44,13 +52,52 @@
                 }
             }
 
-            internal Host(HostEntry entry)
+            internal Host(string identity, HostEntry entry)
             {
+                if (identity == null)
+                {
+                    throw new ArgumentNullException("identity");
+                }
+                if (identity.Length <= 0)
+                {
+                    throw new ArgumentOutOfRangeException("identity");
+                }
                 if (entry == null)
                 {
                     throw new ArgumentNullException("entry");
                 }
                 this.Entry = entry;
+                this.Identity = identity;
+            }
+
+            internal void Serialize(BinaryWriter writer)
+            {
+                this.Entry.Serialize(writer);
+                MalockMessage.WriteStringToStream(writer, this.Identity);
+            }
+
+            internal static Host Deserialize(BinaryReader reader)
+            {
+                Host host;
+                TryDeserialize(reader, out host);
+                return host;
+            }
+
+            internal static bool TryDeserialize(BinaryReader reader, out Host host)
+            {
+                host = null;
+                HostEntry entry;
+                if (!HostEntry.TryDeserialize(reader, out entry))
+                {
+                    return false;
+                }
+                string identity;
+                if (!MalockMessage.TryFromStringInReadStream(reader, out identity))
+                {
+                    return false;
+                }
+                host = new Host(identity, entry);
+                return true;
             }
         }
 
@@ -90,8 +137,16 @@
             return unchecked((int)((hashcode * hashcode) / 1000 % count));
         }
 
-        public bool BindEntry(string key, HostEntry entry)
+        public bool SetEntry(string identity, string key, HostEntry entry)
         {
+            if (identity == null)
+            {
+                throw new ArgumentNullException("identity");
+            }
+            if (identity.Length <= 0)
+            {
+                throw new ArgumentOutOfRangeException("identity");
+            }
             if (key == null)
             {
                 throw new ArgumentNullException("key");
@@ -106,25 +161,30 @@
             }
             lock (this.syncobj)
             {
-                Host host;
-                if (!this.entrys.TryGetValue(key, out host))
+                this.Register(identity, entry);
+                Host host = null;
+                do
+                {
+                    if (this.entrys.TryGetValue(key, out host))
+                    {
+                        this.entrys.TryRemove(key, out host);
+                    }
+                } while (false);
+                if (!this.hosts.TryGetValue(identity, out host))
                 {
                     return false;
                 }
-                else
+                if (host == null || host.Entry != entry)
                 {
-                    if (entry == host.Entry)
-                    {
-                        return true;
-                    }
-                    this.entrys[key] = new Host(entry);
+                    return false;
                 }
-                return true;
+                return this.entrys.TryAdd(key, host);
             }
         }
 
-        public HostEntry GetEntry(string key)
+        public HostEntry GetEntry(string key, out string identity)
         {
+            identity = null;
             if (key == null)
             {
                 throw new ArgumentNullException("key");
@@ -140,6 +200,7 @@
                 {
                     if (host.Available)
                     {
+                        identity = host.Identity;
                         return host.Entry;
                     }
                     else if (--host.Quantity < 0)
@@ -167,6 +228,7 @@
                     } while (false);
                     this.entrys.TryAdd(key, host);
                 }
+                identity = host.Identity;
                 return host.Entry;
             }
         }
@@ -375,7 +437,7 @@
             }
             lock (this.syncobj)
             {
-                if (!this.hosts.TryAdd(identity, new Host(entry)))
+                if (!this.hosts.TryAdd(identity, new Host(identity, entry)))
                 {
                     Host host;
                     if (this.hosts.TryGetValue(identity, out host))

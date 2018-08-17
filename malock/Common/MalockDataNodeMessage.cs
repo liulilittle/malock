@@ -75,12 +75,12 @@
             }
             m.Timeout = br.ReadInt32();
             string s;
-            if (!MalockMessage.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStringInReadStream(br, out s))
             {
                 return null;
             }
             m.Key = s;
-            if (!MalockMessage.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStringInReadStream(br, out s))
             {
                 return null;
             }

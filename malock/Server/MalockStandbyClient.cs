@@ -45,20 +45,48 @@
             }
             this.engine = engine;
             this.configuration = configuration;
-            this.socket = new MalockInnetSocket(configuration.Identity, this.GetAddress(configuration), configuration.Port,
-                MalockMessage.LINK_MODE_SERVER);
+            this.socket = new MalockInnetSocket(configuration.Identity, this.GetAddress(configuration), configuration.Port, MalockMessage.LINK_MODE_SERVER);
             this.socket.Received += this.OnReceived;
+            this.socket.Connected += this.OnConnected;
+            this.socket.Aborted += this.OnAborted;
             this.socket.Run();
         }
 
-        protected virtual MalockConfiguration GetConfiguration()
+        public MalockStandbyClient(string identity, string address, int listenport)
         {
-            return this.configuration;
+            this.socket = new MalockInnetSocket(identity, address, listenport, MalockMessage.LINK_MODE_SERVER);
+            this.socket.Received += this.OnReceived;
+            this.socket.Connected += this.OnConnected;
+            this.socket.Aborted += this.OnAborted;
+            this.socket.Run();
         }
 
-        protected virtual MalockEngine GetEngine()
+        protected virtual void OnAborted(object sender, EventArgs e)
         {
-            return this.engine;
+            /*
+             *
+             */
+        }
+
+        protected virtual void OnConnected(object sender, EventArgs e)
+        {
+            MalockDataNodeMessage message = new MalockDataNodeMessage();
+            message.Command = MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO;
+            message.Sequence = MalockMessage.NewId();
+            message.Timeout = -1;
+            MalockMessage.TrySendMessage(this, message);
+        }
+
+        public MalockStandbyClient(MalockEngine engine, string identity, string address, int listenport)
+        {
+            if (engine == null)
+            {
+                throw new ArgumentNullException("engine");
+            }
+            this.engine = engine;
+            this.socket = new MalockInnetSocket(identity, address, listenport, MalockMessage.LINK_MODE_SERVER);
+            this.socket.Received += this.OnReceived;
+            this.socket.Run();
         }
 
         protected virtual IMalockSocket GetInnerSocket()
@@ -89,15 +117,18 @@
                 return;
             }
             MalockTable malock = this.engine.GetTable();
-            foreach (HandleInfo i in s)
+            lock (malock.GetSynchronizationObject())
             {
-                if (i.Available)
+                foreach (HandleInfo i in s)
                 {
-                    malock.Exit(i.Key);
-                }
-                else
-                {
-                    malock.Enter(i.Key, i.Identity);
+                    if (i.Available)
+                    {
+                        malock.Exit(i.Key);
+                    }
+                    else
+                    {
+                        malock.Enter(i.Key, i.Identity);
+                    }
                 }
             }
         }
@@ -114,34 +145,27 @@
             malock.Enter(message.Key, message.Identity);
         }
 
-        private void OnReceived(object sender, MalockInnetSocketStream e)
+        protected virtual void OnReceived(object sender, MalockInnetSocketStream e)
         {
             MalockDataNodeMessage message = null;
             using (Stream stream = e.Stream)
             {
-                try
+                if (!MalockDataNodeMessage.TryDeserialize(e.Stream, out message))
                 {
-                    message = MalockDataNodeMessage.Deserialize(e.Stream);
-                }
-                catch (Exception)
-                {
-                    this.socket.Abort();
+                    this.Abort();
                     return;
                 }
-                if (message != null)
+                if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
                 {
-                    if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
-                    {
-                        this.LoadAllInfo(stream);
-                    }
-                    else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_ENTER)
-                    {
-                        this.Enter(message);
-                    }
-                    else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_EXIT)
-                    {
-                        this.Exit(message);
-                    }
+                    this.LoadAllInfo(stream);
+                }
+                else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_ENTER)
+                {
+                    this.Enter(message);
+                }
+                else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_EXIT)
+                {
+                    this.Exit(message);
                 }
             }
         }

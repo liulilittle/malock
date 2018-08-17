@@ -1,4 +1,4 @@
-﻿namespace malock_nns_server6900
+﻿namespace malock_nns_server6901
 {
     using malock.NN;
     using System;
@@ -7,7 +7,7 @@
     {
         static void Main(string[] args)
         {
-            NnsServer server = new NnsServer("malock-nns-server-node-001", 6900, "127.0.0.1:6901");
+            NnsServer server = new NnsServer("malock-nns-server-node-002", 6901, "127.0.0.1:6900");
             server.Run();
 
             Console.ReadKey(false);

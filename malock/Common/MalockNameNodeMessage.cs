@@ -10,8 +10,15 @@
 
         public const byte SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO = 0x01;
         public const byte SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO = 0x02;
+        public const byte SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO = 0x03;
 
         public string Key
+        {
+            get;
+            set;
+        }
+
+        public string Identity
         {
             get;
             set;
@@ -21,6 +28,7 @@
         {
             base.Serialize(writer);
             WriteStringToStream(writer, this.Key);
+            WriteStringToStream(writer, this.Identity);
         }
 
         public static bool TryDeserialize(Stream stream, out MalockNameNodeMessage message)
@@ -42,11 +50,16 @@
                 return null;
             }
             string s;
-            if (!MalockMessage.TryFromStreamInRead(br, out s))
+            if (!MalockMessage.TryFromStringInReadStream(br, out s))
             {
                 return null;
             }
             m.Key = s;
+            if (!MalockMessage.TryFromStringInReadStream(br, out s))
+            {
+                return null;
+            }
+            m.Identity = s;
             return m;
         }
     }

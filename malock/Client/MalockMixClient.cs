@@ -443,7 +443,6 @@
                         }
                     }
                     currentsocket = (MalockSocket)this.preferred;
-                    Console.Title = "preferred->" + GetNetworkAddress(currentsocket);
                 }
                 if (readying)
                 {
@@ -471,11 +470,6 @@
                 {
                     aborted = true;
                     this.preferred = this.Select(this.preferred);
-                }
-                if (this.preferred != null)
-                {
-                    MalockSocket socket = (MalockSocket)this.preferred;
-                    Console.Title = "preferred->" + GetNetworkAddress(socket);
                 }
             }
             if (aborted)
