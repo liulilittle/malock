@@ -5,6 +5,7 @@
     using malock.NN;
     using System;
     using System.Diagnostics;
+    using System.Collections.Generic;
     using Interlocked = System.Threading.Interlocked;
 
     class Program
@@ -21,10 +22,10 @@
                     {
                         for (int j = 0; j < 1000; j++)
                         {
-                            nns.QueryHostEntryAsync("test013", (error, entry) =>
-                            {
-                                Console.WriteLine("count {0}, {1}", Interlocked.Increment(ref count), entry);
-                            });
+                            HostEntry host;
+                            nns.TryGetHostEntry("test013", out host);
+                            Console.WriteLine(host);
+                            nns.TryGetAllHostEntry(out IEnumerable<HostEntry> hosts);
                         }
                     });
                 }
@@ -33,10 +34,10 @@
 
         static void Main(string[] args)
         {
-            /*
-                NN_Test();
-                Console.ReadKey(false);
-            */
+
+            NN_Test();
+            Console.ReadKey(false);
+
             MalockClient malock = Malock.GetClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             malock.Ready += delegate
             {

@@ -164,7 +164,7 @@
             return null;
         }
 
-        public string MeasureKey(bool positive)
+        private string MeasureKey(bool positive)
         {
             string[] addresss = new string[2];
             Host host = positive ? this.Primary : this.Standby;
@@ -190,14 +190,14 @@
             return key.GetHashCode();
         }
 
-        public virtual Stream Serialize()
+        internal virtual Stream Serialize()
         {
             MemoryStream ms = new MemoryStream();
             this.Serialize(ms);
             return ms;
         }
 
-        public void Serialize(Stream stream)
+        internal void Serialize(Stream stream)
         {
             if (stream == null)
             {
@@ -207,7 +207,7 @@
             this.Serialize(bw);
         }
 
-        public virtual void Serialize(BinaryWriter writer)
+        internal virtual void Serialize(BinaryWriter writer)
         {
             if (writer == null)
             {
@@ -217,7 +217,7 @@
             this.Standby.Serialize(writer);
         }
 
-        public static HostEntry Deserialize(Stream stream)
+        internal static HostEntry Deserialize(Stream stream)
         {
             if (stream == null)
             {
@@ -226,14 +226,14 @@
             return Deserialize(new BinaryReader(stream));
         }
 
-        public static HostEntry Deserialize(BinaryReader reader)
+        internal static HostEntry Deserialize(BinaryReader reader)
         {
             HostEntry entry;
             TryDeserialize(reader, out entry);
             return entry;
         }
 
-        public static bool TryDeserialize(Stream stream, out HostEntry entry)
+        internal static bool TryDeserialize(Stream stream, out HostEntry entry)
         {
             if (stream == null)
             {
@@ -242,7 +242,7 @@
             return TryDeserialize(new BinaryReader(stream), out entry);
         }
 
-        public static bool TryDeserialize(BinaryReader reader, out HostEntry entry)
+        internal static bool TryDeserialize(BinaryReader reader, out HostEntry entry)
         {
             if (reader == null)
             {

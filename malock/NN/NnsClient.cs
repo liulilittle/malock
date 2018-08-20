@@ -89,7 +89,11 @@
                         if (errno == MalockMessage.Mappable.ERROR_NOERROR)
                         {
                             IList<HostEntry> hosts = new List<HostEntry>();
-                            NnsTable.Host.DeserializeAll(stream, (host) => hosts.Add(host.Entry));
+                            NnsTable.Host.DeserializeAll(stream, (host) =>
+                            {
+                                HostEntry entry = host.Entry;
+                                hosts.Add(entry);
+                            });
                             state(NnsError.kSuccess, hosts);
                         }
                         else if (errno == MalockMessage.Mappable.ERROR_TIMEOUT)
@@ -107,12 +111,22 @@
             }
         }
 
-        public NnsError TryQueryHostEntry(string key, out HostEntry entry)
+        public NnsError TryGetAllHostEntry(out IEnumerable<HostEntry> entries)
         {
-            return TryQueryHostEntry(key, Malock.DefaultTimeout, out entry);
+            return TryGetAllHostEntry(Malock.DefaultTimeout, out entries);
         }
 
-        public NnsError TryQueryHostEntry(string key, int timeout, out HostEntry entry)
+        public NnsError TryGetAllHostEntry(int timeout, out IEnumerable<HostEntry> entries)
+        {
+            return TryInternalInvoke((callback) => GetAllHostEntryAsync(timeout, callback), out entries);
+        }
+
+        public NnsError TryGetHostEntry(string key, out HostEntry entry)
+        {
+            return TryGetHostEntry(key, Malock.DefaultTimeout, out entry);
+        }
+
+        public NnsError TryGetHostEntry(string key, int timeout, out HostEntry entry)
         {
             if (key == null)
             {
@@ -122,35 +136,40 @@
             {
                 throw new ArgumentOutOfRangeException("key");
             }
-            NnsError result = NnsError.kError;
-            HostEntry hosts = null;
-            entry = null;
+            return TryInternalInvoke((callback) => GetHostEntryAsync(key, timeout, callback), out entry);
+        }
+
+        private NnsError TryInternalInvoke<TModel>(Action<Action<NnsError, TModel>> callback, out TModel model)
+        {
+            NnsError result_errno = NnsError.kError;
+            TModel result_model = default(TModel);
+            model = default(TModel);
             using (ManualResetEvent events = new ManualResetEvent(false))
             {
-                InternalQueryHostEntryAsync(key, timeout, (error, info) =>
+                callback((error, info) =>
                 {
-                    result = error;
+                    result_errno = error;
                     if (error == NnsError.kSuccess)
                     {
-                        hosts = info;
+                        result_model = info;
                     }
                     events.Set();
                 });
                 events.WaitOne();
-                if (result == NnsError.kSuccess)
+                if (result_errno == NnsError.kSuccess)
                 {
-                    entry = hosts;
+                    model = result_model;
                 }
             }
-            return result;
+            return result_errno;
         }
 
-        public void QueryHostEntryAsync(string key, Action<NnsError, HostEntry> state)
+        public void GetHostEntryAsync(string key, Action<NnsError, HostEntry> state)
         {
-            this.InternalQueryHostEntryAsync(key, Malock.DefaultTimeout, state);
+            this.InternalGetHostEntryAsync(key, Malock.DefaultTimeout, state);
         }
 
-        public void QueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state)
+        public void GetHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state)
         {
             if (state == null)
             {
@@ -164,10 +183,10 @@
             {
                 throw new ArgumentOutOfRangeException("key");
             }
-            this.InternalQueryHostEntryAsync(key, timeout, state);
+            this.InternalGetHostEntryAsync(key, timeout, state);
         }
 
-        private void InternalQueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state)
+        private void InternalGetHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state)
         {
             HostEntryCache cache;
             lock (this.caches)
@@ -193,7 +212,7 @@
                     }
                     else
                     {
-                        this.InternalRemoteQueryHostEntryAsync(key, timeout, (error, entry) =>
+                        this.InternalRemoteGetHostEntryAsync(key, timeout, (error, entry) =>
                         {
                             if (error == NnsError.kSuccess)
                             {
@@ -208,7 +227,7 @@
             }
         }
 
-        private void InternalRemoteQueryHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state, bool retrying)
+        private void InternalRemoteGetHostEntryAsync(string key, int timeout, Action<NnsError, HostEntry> state, bool retrying)
         {
             if ((retrying && timeout <= 0) || (timeout <= 0 && timeout != -1))
             {
@@ -249,7 +268,7 @@
                                 {
                                     timeout -= Convert.ToInt32(elapsedMilliseconds);
                                 }
-                                this.InternalRemoteQueryHostEntryAsync(key, timeout, state, timeout == -1 ? false : true);
+                                this.InternalRemoteGetHostEntryAsync(key, timeout, state, timeout == -1 ? false : true);
                             }
                         };
                         delaytick.Start();
