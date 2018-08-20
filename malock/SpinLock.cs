@@ -6,7 +6,7 @@
     using Interlocked = System.Threading.Interlocked;
     using Thread = System.Threading.Thread;
 
-    public sealed class SpinLock
+    public sealed class SpinLock : IHandle
     {
         private readonly EventWaitHandle handle;
 

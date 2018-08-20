@@ -10,7 +10,7 @@
     using System.Threading;
     using MSG = global::malock.Common.MalockNameNodeMessage;
 
-    public class NnsClient : MalockMixClient<MSG> 
+    public class NnsClient : MalockMixClient<MSG>
     {
         private class HostEntryCache
         {
@@ -36,8 +36,9 @@
         }
 
         private readonly Dictionary<string, HostEntryCache> caches = new Dictionary<string, HostEntryCache>();
+        private static readonly HostEntry[] emptryentries = new HostEntry[0];
 
-        public NnsClient(string identity, string mainuseNode, string standbyNode)
+        internal NnsClient(string identity, string mainuseNode, string standbyNode)
             : this(identity, mainuseNode, standbyNode, null)
         {
 
@@ -62,6 +63,48 @@
         protected override bool TryDeserializeMessage(MalockSocketStream stream, out MSG message)
         {
             return MSG.TryDeserialize(stream.Stream, out message);
+        }
+
+        public void GetAllHostEntryAsync(Action<NnsError, IEnumerable<HostEntry>> state)
+        {
+            GetAllHostEntryAsync(Malock.DefaultTimeout, state);
+        }
+
+        public void GetAllHostEntryAsync(int timeout, Action<NnsError, IEnumerable<HostEntry>> state)
+        {
+            if (state == null)
+            {
+                throw new ArgumentNullException("state");
+            }
+            if (timeout <= 0 && timeout != -1)
+            {
+                state(NnsError.kTimeout, emptryentries);
+            }
+            else
+            {
+                Exception exception = null;
+                if (!MalockMessage.TryInvokeAsync(this, this.NewMessage(null, MSG.CLIENT_COMMAND_DUMPHOSTENTRYINFO),
+                    timeout, (errno, message, stream) =>
+                    {
+                        if (errno == MalockMessage.Mappable.ERROR_NOERROR)
+                        {
+                            IList<HostEntry> hosts = new List<HostEntry>();
+                            NnsTable.Host.DeserializeAll(stream, (host) => hosts.Add(host.Entry));
+                            state(NnsError.kSuccess, hosts);
+                        }
+                        else if (errno == MalockMessage.Mappable.ERROR_TIMEOUT)
+                        {
+                            state(NnsError.kTimeout, emptryentries);
+                        }
+                        else if (errno == MalockMessage.Mappable.ERROR_ABORTED)
+                        {
+                            state(NnsError.kAborted, emptryentries);
+                        }
+                    }, ref exception))
+                {
+                    state(NnsError.kAborted, emptryentries);
+                }
+            }
         }
 
         public NnsError TryQueryHostEntry(string key, out HostEntry entry)

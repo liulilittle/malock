@@ -134,23 +134,15 @@
             do
             {
                 var hosts = this.nnsTable.GetAllHosts();
-                using (MemoryStream stream = new MemoryStream())
+                lock (this.nnsTable)
                 {
-                    using (BinaryWriter bw = new BinaryWriter(stream))
+                    NnsTable.Host.SerializeAll(hosts, (count, stream) =>
                     {
-                        bw.Write(0);
-                        int count = 0;
-                        foreach (var host in hosts)
+                        using (MemoryStream ms = (MemoryStream)stream)
                         {
-                            host.Serialize(bw);
-                            count++;
+                            MalockMessage.TrySendMessage(socket, message, ms.GetBuffer(), 0, unchecked((int)ms.Position));
                         }
-                        fixed (byte* pinned = stream.GetBuffer())
-                        {
-                            *(int*)pinned = count;
-                        }
-                        MalockMessage.TrySendMessage(socket, message, stream.GetBuffer(), 0, unchecked((int)stream.Position));
-                    }
+                    });
                 }
             } while (false);
         }

@@ -3,12 +3,11 @@
     using global::malock.Common;
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.IO;
     using System.Threading;
     using Timer = global::malock.Core.Timer;
 
-    public abstract class EventWaitHandle
+    public abstract class EventWaitHandle : IHandle
     {
         public static void Sleep(int millisecondsTimeout)
         {
@@ -53,6 +52,14 @@
         {
             get;
             private set;
+        }
+
+        public EventWaitHandle Handle
+        {
+            get
+            {
+                return this;
+            }
         }
 
         public override string ToString()

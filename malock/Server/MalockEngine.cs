@@ -197,15 +197,18 @@
                 BinaryWriter bw = new BinaryWriter(stream);
                 bw.Write(0);
                 int count = 0;
-                foreach (var locker in this.malockTable.GetAllLocker())
+                lock (this.malockTable)
                 {
-                    lock (locker)
+                    foreach (var locker in this.malockTable.GetAllLocker())
                     {
-                        HandleInfo handleInfo = new HandleInfo(
-                            locker.Key, locker.Identity, locker.Available);
-                        handleInfo.Serialize(stream);
+                        lock (locker)
+                        {
+                            HandleInfo handleInfo = new HandleInfo(
+                                locker.Key, locker.Identity, locker.Available);
+                            handleInfo.Serialize(stream);
+                        }
+                        count++;
                     }
-                    count++;
                 }
                 byte[] buffer = stream.GetBuffer();
                 fixed (byte* pinned = buffer)

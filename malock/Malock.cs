@@ -2,13 +2,17 @@
 {
     using global::malock.Client;
     using global::malock.Core;
+    using global::malock.NN;
     using System;
     using System.Collections.Generic;
     using System.Reflection;
+    using Timeout = System.Threading.Timeout;
 
     public static class Malock
     {
         private static readonly TimerScheduler scheduler = new TimerScheduler(100);
+        private static readonly Dictionary<string, NnsClient> nnss = new Dictionary<string, NnsClient>();
+        private static readonly Dictionary<string, MalockClient> malocks = new Dictionary<string, MalockClient>();
         /// <summary>
         /// 连接中断后重连间隔时间
         /// </summary>
@@ -37,6 +41,10 @@
         /// 确认流水线死锁所需次数
         /// </summary>
         public const int AckPipelineDeadlockCount = 3;
+        /// <summary>
+        /// 用于指定无限长等待时间的常数
+        /// </summary>
+        public const int Infinite = Timeout.Infinite;
 
         public static void Ngen(Assembly assembly)
         {
@@ -92,10 +100,37 @@
             return new Timer(scheduler);
         }
 
-        public static MalockClient NewClient(string identity, string mainuseMachine, string standbyMachine)
+        public static MalockClient GetClient(string identity, string mainuseMachine, string standbyMachine)
         {
-            MalockClient malock = new MalockClient(identity, mainuseMachine, standbyMachine);
-            return malock;
+            return InternalGetObject("Malock->", identity, mainuseMachine, standbyMachine, malocks, () => new MalockClient(identity, mainuseMachine, standbyMachine));
+        }
+
+        public static NnsClient GetNns(string identity, string mainuseMachine, string standbyMachine)
+        {
+            return InternalGetObject("Nns->", identity, mainuseMachine, standbyMachine, nnss, () => new NnsClient(identity, mainuseMachine, standbyMachine));
+        }
+
+        private static T InternalGetObject<T>(string category, string identity,
+            string standby_machine, string mainuse_machine, Dictionary<string, T> s, Func<T> new_constructor)
+        {
+            string format = category + "{0}|{1}|{2}";
+            string key = string.Format(format, identity, standby_machine, mainuse_machine);
+            T item = default(T);
+            lock (s)
+            {
+                if (s.TryGetValue(key, out item))
+                {
+                    return item;
+                }
+                key = string.Format(format, identity, mainuse_machine, standby_machine);
+                if (s.TryGetValue(key, out item))
+                {
+                    return item;
+                }
+                item = new_constructor();
+                s.Add(key, item);
+            }
+            return item;
         }
 
         public static bool Enter(EventWaitHandle handle)
@@ -108,9 +143,29 @@
             return handle.TryEnter(millisecondsTimeout);
         }
 
+        public static bool Exit(IHandle handle)
+        {
+            return Exit(handle.Handle);
+        }
+
+        public static bool Enter(IHandle handle, int millisecondsTimeout)
+        {
+            return Enter(handle.Handle, millisecondsTimeout);
+        }
+
+        public static bool Enter(IHandle handle)
+        {
+            return Enter(handle, -1);
+        }
+
         public static bool Exit(EventWaitHandle handle)
         {
             return handle.Exit();
+        }
+
+        public static IEnumerable<HandleInfo> GetAllInfo(IHandle handle)
+        {
+            return GetAllInfo(handle.Handle);
         }
 
         public static IEnumerable<HandleInfo> GetAllInfo(EventWaitHandle handle)

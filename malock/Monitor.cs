@@ -3,7 +3,7 @@
     using global::malock.Client;
     using System;
 
-    public sealed class Monitor
+    public sealed class Monitor : IHandle
     {
         private readonly EventWaitHandle handle;
 

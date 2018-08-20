@@ -11,7 +11,7 @@
     {
         static void NN_Test()
         {
-            NnsClient nns = new NnsClient("malock-client-node-001", "127.0.0.1:6900", "127.0.0.1:6901").Run();
+            NnsClient nns = Malock.GetNns("malock-client-node-001", "127.0.0.1:6900", "127.0.0.1:6901").Run();
             nns.Ready += delegate
             {
                 int count = 0;
@@ -37,7 +37,7 @@
                 NN_Test();
                 Console.ReadKey(false);
             */
-            MalockClient malock = Malock.NewClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
+            MalockClient malock = Malock.GetClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             malock.Ready += delegate
             {
                 Monitor m = new Monitor("OMFG", malock);

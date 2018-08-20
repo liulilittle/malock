@@ -99,6 +99,76 @@
                 host = new Host(identity, entry);
                 return true;
             }
+
+            internal static int DeserializeAll(Stream stream, Action<Host> callback)
+            {
+                if (stream == null)
+                {
+                    throw new ArgumentNullException("stream");
+                }
+                if (callback == null)
+                {
+                    throw new ArgumentNullException("callback");
+                }
+                BinaryReader br = new BinaryReader(stream);
+                if (!MalockMessage.StreamIsReadable(stream, sizeof(int)))
+                {
+                    return 0;
+                }
+                int len = br.ReadInt32();
+                int count = 0;
+                for (int i = 0; i < len; i++)
+                {
+                    Host host;
+                    if (!Host.TryDeserialize(br, out host))
+                    {
+                        break;
+                    }
+                    count++;
+                    callback(host);
+                }
+                return count;
+            }
+
+            internal unsafe static void SerializeAll(IEnumerable<Host> hosts, Action<int, Stream> callback)
+            {
+                SerializeAll(hosts, new MemoryStream(), callback);
+            }
+
+            internal unsafe static int SerializeAll(IEnumerable<Host> hosts, Stream stream, Action<int, Stream> callback)
+            {
+                if (hosts == null)
+                {
+                    throw new ArgumentNullException("hosts");
+                }
+                if (stream == null)
+                {
+                    throw new ArgumentNullException("stream");
+                }
+                MemoryStream ms = stream as MemoryStream;
+                if (ms == null)
+                {
+                    throw new ArgumentOutOfRangeException("stream");
+                }
+                if (callback == null)
+                {
+                    throw new ArgumentNullException("callback");
+                }
+                BinaryWriter bw = new BinaryWriter(stream);
+                bw.Write(0);
+                int count = 0;
+                foreach (var host in hosts)
+                {
+                    host.Serialize(bw);
+                    count++;
+                }
+                fixed (byte* pinned = ms.GetBuffer())
+                {
+                    *(int*)pinned = count;
+                }
+                callback(count, stream);
+                return count;
+            }
         }
 
         public ICollection<Host> GetAllHosts()

@@ -38,19 +38,9 @@
 
         private void DumpHostEntry(Stream stream)
         {
-            BinaryReader br = new BinaryReader(stream);
-            int count = br.ReadInt32();
             lock (this.nnsTable.GetSynchronizationObject())
             {
-                for (int i = 0; i < count; i++)
-                {
-                    NnsTable.Host host;
-                    if (!NnsTable.Host.TryDeserialize(br, out host))
-                    {
-                        break;
-                    }
-                    this.nnsTable.Register(host.Identity, host.Entry);
-                }
+                NnsTable.Host.DeserializeAll(stream, (host) => this.nnsTable.Register(host.Identity, host.Entry));
             }
         }
 
