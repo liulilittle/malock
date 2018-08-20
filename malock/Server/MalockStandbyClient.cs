@@ -70,8 +70,8 @@
 
         protected virtual void OnConnected(object sender, EventArgs e)
         {
-            MalockDataNodeMessage message = new MalockDataNodeMessage();
-            message.Command = MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO;
+            MalockNodeMessage message = new MalockNodeMessage();
+            message.Command = MalockNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO;
             message.Sequence = MalockMessage.NewId();
             message.Timeout = -1;
             MalockMessage.TrySendMessage(this, message);
@@ -133,13 +133,13 @@
             }
         }
 
-        private void Exit(MalockDataNodeMessage message)
+        private void Exit(MalockNodeMessage message)
         {
             MalockTable malock = this.engine.GetTable();
             malock.Exit(message.Key, message.Identity);
         }
 
-        private void Enter(MalockDataNodeMessage message)
+        private void Enter(MalockNodeMessage message)
         {
             MalockTable malock = this.engine.GetTable();
             malock.Enter(message.Key, message.Identity);
@@ -147,23 +147,23 @@
 
         protected virtual void OnReceived(object sender, MalockInnetSocketStream e)
         {
-            MalockDataNodeMessage message = null;
+            MalockNodeMessage message = null;
             using (Stream stream = e.Stream)
             {
-                if (!MalockDataNodeMessage.TryDeserialize(e.Stream, out message))
+                if (!MalockNodeMessage.TryDeserialize(e.Stream, out message))
                 {
                     this.Abort();
                     return;
                 }
-                if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
+                if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
                 {
                     this.LoadAllInfo(stream);
                 }
-                else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_ENTER)
+                else if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_ENTER)
                 {
                     this.Enter(message);
                 }
-                else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_EXIT)
+                else if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_EXIT)
                 {
                     this.Exit(message);
                 }

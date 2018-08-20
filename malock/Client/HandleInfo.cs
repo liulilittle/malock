@@ -25,6 +25,11 @@
             private set;
         }
 
+        public override string ToString()
+        {
+            return string.Format("Key({0}), Identity({1}), Available({2})", this.Key, this.Identity ?? "/* null */", this.Available);
+        }
+
         private HandleInfo()
         {
 

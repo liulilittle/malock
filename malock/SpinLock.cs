@@ -6,11 +6,11 @@
     using Interlocked = System.Threading.Interlocked;
     using Thread = System.Threading.Thread;
 
-    public sealed class SpinLock : IHandle
+    public sealed class SpinLock : IEventWaitHandle
     {
         private readonly EventWaitHandle handle;
 
-        private class SpinLockWaitable : IWaitableHandler
+        private class SpinLockWaitable : IWaitable
         {
             private volatile int signal = 0x00;
             private bool reduce = false;
@@ -71,12 +71,13 @@
         {
             private readonly SpinLock locker = default(SpinLock);
 
-            public SpinLockWaitHandle(string key, MalockClient malock, SpinLock locker) : base(key, malock)
+            public SpinLockWaitHandle(SpinLock owner, string key, MalockClient malock) :
+                base(owner, key, malock)
             {
-                this.locker = locker;
+                this.locker = owner;
             }
 
-            protected override IWaitableHandler NewWaitable()
+            protected override IWaitable NewWaitable()
             {
                 return new SpinLockWaitable(this.locker.Reduce);
             }
@@ -98,7 +99,7 @@
         public SpinLock(string key, MalockClient malock, bool reduce)
         {
             this.Reduce = reduce;
-            this.handle = new SpinLockWaitHandle(key, malock, this);
+            this.handle = new SpinLockWaitHandle(this, key, malock);
         }
 
         public bool Reduce

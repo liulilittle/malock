@@ -3,14 +3,14 @@
     using System;
     using System.IO;
 
-    public sealed class MalockNameNodeMessage : MalockMessage
+    public sealed class MalockNnsMessage : MalockMessage
     {
-        public const byte CLIENT_COMMAND_QUERYHOSTENTRYINFO = 0x01;
-        public const byte CLIENT_COMMAND_DUMPHOSTENTRYINFO = 0x02;
+        internal const byte CLIENT_COMMAND_QUERYHOSTENTRYINFO = 0x01;
+        internal const byte CLIENT_COMMAND_DUMPHOSTENTRYINFO = 0x02;
 
-        public const byte SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO = 0x01;
-        public const byte SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO = 0x02;
-        public const byte SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO = 0x03;
+        internal const byte SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO = 0x01;
+        internal const byte SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO = 0x02;
+        internal const byte SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO = 0x03;
 
         public string Key
         {
@@ -24,27 +24,27 @@
             set;
         }
 
-        public override void Serialize(BinaryWriter writer)
+        internal override void Serialize(BinaryWriter writer)
         {
             base.Serialize(writer);
             WriteStringToStream(writer, this.Key);
             WriteStringToStream(writer, this.Identity);
         }
 
-        public static bool TryDeserialize(Stream stream, out MalockNameNodeMessage message)
+        internal static bool TryDeserialize(Stream stream, out MalockNnsMessage message)
         {
             message = Deserialize(stream);
             return message != null;
         }
 
-        public static MalockNameNodeMessage Deserialize(Stream stream)
+        internal static MalockNnsMessage Deserialize(Stream stream)
         {
             if (stream == null)
             {
                 throw new ArgumentNullException("stream");
             }
             BinaryReader br = new BinaryReader(stream);
-            var m = new MalockNameNodeMessage();
+            var m = new MalockNnsMessage();
             if (!MalockMessage.DeserializeTo(m, br))
             {
                 return null;

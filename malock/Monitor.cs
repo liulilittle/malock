@@ -3,18 +3,18 @@
     using global::malock.Client;
     using System;
 
-    public sealed class Monitor : IHandle
+    public sealed class Monitor : IEventWaitHandle
     {
         private readonly EventWaitHandle handle;
 
         private sealed class MonitorWaitHandle : EventWaitHandle
         {
-            public MonitorWaitHandle(string key, MalockClient malock) : base(key, malock)
+            public MonitorWaitHandle(object owner, string key, MalockClient malock) : base(owner, key, malock)
             {
 
             }
 
-            protected override IWaitableHandler NewWaitable()
+            protected override IWaitable NewWaitable()
             {
                 return base.NewWaitable();
             }
@@ -30,7 +30,7 @@
 
         public Monitor(string key, MalockClient malock)
         {
-            this.handle = new MonitorWaitHandle(key, malock);
+            this.handle = new MonitorWaitHandle(this, key, malock);
         }
 
         public void Enter()

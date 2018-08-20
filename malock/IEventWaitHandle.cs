@@ -2,7 +2,7 @@
 {
     using global::malock.Client;
 
-    public interface IHandle
+    public interface IEventWaitHandle
     {
         EventWaitHandle Handle
         {

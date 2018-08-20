@@ -3,19 +3,19 @@
     using System;
     using System.IO;
 
-    public sealed class MalockDataNodeMessage : MalockMessage
+    public sealed class MalockNodeMessage : MalockMessage
     {
-        public const byte CLIENT_COMMAND_LOCK_ENTER = 0x00;
-        public const byte CLIENT_COMMAND_LOCK_EXIT = 0x01;
-        public const byte CLIENT_COMMAND_GETALLINFO = 0x02;
+        internal const byte CLIENT_COMMAND_LOCK_ENTER = 0x00;
+        internal const byte CLIENT_COMMAND_LOCK_EXIT = 0x01;
+        internal const byte CLIENT_COMMAND_GETALLINFO = 0x02;
 
-        public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEENTER = 0xfb;
-        public const byte CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT = 0xfc;
+        internal const byte CLIENT_COMMAND_LOCK_ACKPIPELINEENTER = 0xfb;
+        internal const byte CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT = 0xfc;
 
-        public const byte SERVER_COMMAND_SYN_ENTER = 0x00;
-        public const byte SERVER_COMMAND_SYN_EXIT = 0x01;
-        public const byte SERVER_COMMAND_SYN_LOADALLINFO = 0x02;
-        public const byte SERVER_COMMAND_SYN_FREE = 0xf0;
+        internal const byte SERVER_COMMAND_SYN_ENTER = 0x00;
+        internal const byte SERVER_COMMAND_SYN_EXIT = 0x01;
+        internal const byte SERVER_COMMAND_SYN_LOADALLINFO = 0x02;
+        internal const byte SERVER_COMMAND_SYN_FREE = 0xf0;
 
         /// <summary>
         /// 超时时间
@@ -42,14 +42,14 @@
             set;
         }
 
-        public override Stream Serialize()
+        internal override Stream Serialize()
         {
             MemoryStream ms = new MemoryStream();
             this.Serialize(ms);
             return ms;
         }
 
-        public override void Serialize(BinaryWriter writer)
+        internal override void Serialize(BinaryWriter writer)
         {
             if (writer == null)
             {
@@ -61,14 +61,14 @@
             WriteStringToStream(writer, this.Identity);
         }
 
-        public static MalockDataNodeMessage Deserialize(Stream stream)
+        internal static MalockNodeMessage Deserialize(Stream stream)
         {
             if (stream == null)
             {
                 throw new ArgumentNullException("stream");
             }
             BinaryReader br = new BinaryReader(stream);
-            MalockDataNodeMessage m = new MalockDataNodeMessage();
+            MalockNodeMessage m = new MalockNodeMessage();
             if (!MalockMessage.DeserializeTo(m, br))
             {
                 return null;
@@ -88,9 +88,9 @@
             return m;
         }
 
-        public static bool TryDeserialize(Stream stream, out MalockDataNodeMessage message)
+        internal static bool TryDeserialize(Stream stream, out MalockNodeMessage message)
         {
-            return (message = MalockDataNodeMessage.Deserialize(stream)) != null;
+            return (message = MalockNodeMessage.Deserialize(stream)) != null;
         }
     }
 }

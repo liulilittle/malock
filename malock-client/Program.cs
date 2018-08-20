@@ -15,7 +15,6 @@
             NnsClient nns = Malock.GetNns("malock-client-node-001", "127.0.0.1:6900", "127.0.0.1:6901").Run();
             nns.Ready += delegate
             {
-                int count = 0;
                 for (int i = 0; i < 4; i++)
                 {
                     EventWaitHandle.Run(() =>
@@ -34,9 +33,8 @@
 
         static void Main(string[] args)
         {
-
-            NN_Test();
-            Console.ReadKey(false);
+            //NN_Test();
+            //Console.ReadKey(false);
 
             MalockClient malock = Malock.GetClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             malock.Ready += delegate
@@ -47,7 +45,7 @@
                 {
                     EventWaitHandle.Run(() =>
                     {
-                        for (int k = 0; k < 2000; k++)
+                        for (int k = 0; k < 10; k++)
                         {
                             try
                             {

@@ -8,7 +8,7 @@
     using System.Diagnostics;
     using System.IO;
     using System.Threading;
-    using MSG = global::malock.Common.MalockNameNodeMessage;
+    using MSG = global::malock.Common.MalockNnsMessage;
 
     public class NnsClient : MalockMixClient<MSG>
     {
@@ -146,10 +146,10 @@
             model = default(TModel);
             using (ManualResetEvent events = new ManualResetEvent(false))
             {
-                callback((error, info) =>
+                callback((errno, info) =>
                 {
-                    result_errno = error;
-                    if (error == NnsError.kSuccess)
+                    result_errno = errno;
+                    if (errno == NnsError.kSuccess)
                     {
                         result_model = info;
                     }

@@ -54,7 +54,7 @@
             {
                 return false;
             }
-            using (Stream message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER,
+            using (Stream message = this.NewMessage(info.Key, info.Identity, MalockNodeMessage.CLIENT_COMMAND_LOCK_ENTER,
                 info.Sequence, info.Timeout).Serialize())
             {
                 if (MalockMessage.TrySendMessage(info.Socket, message))
@@ -127,7 +127,7 @@
 
         public bool Exit(MalockTaskInfo info)
         {
-            byte errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT;
+            byte errno = MalockNodeMessage.CLIENT_COMMAND_LOCK_EXIT;
             if (!this.malockTable.Exit(info.Key, info.Identity))
             {
                 errno = MalockMessage.COMMON_COMMAND_ERROR;
@@ -164,7 +164,7 @@
                 this.malockTable.FreeKeyCollection(info.Identity, out keys);
                 this.AckPipelineEnter(info.Identity, keys);
             } while (false);
-            MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.SERVER_COMMAND_SYN_FREE, info.Sequence, -1);
+            MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockNodeMessage.SERVER_COMMAND_SYN_FREE, info.Sequence, -1);
             MalockMessage.TrySendMessage(this.malockStandbyClient, message);
             return true;
         }
@@ -215,14 +215,14 @@
                 {
                     *(int*)pinned = count;
                 }
-                MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, info.Sequence, -1);
+                MalockMessage message = this.NewMessage(info.Key, info.Identity, MalockNodeMessage.CLIENT_COMMAND_GETALLINFO, info.Sequence, -1);
                 return MalockMessage.TrySendMessage(info.Socket, message, buffer, 0, Convert.ToInt32(stream.Position));
             }
         }
 
         private MalockMessage NewMessage(string key, string identity, byte command, int sequence, int timeout)
         {
-            MalockDataNodeMessage message = new MalockDataNodeMessage();
+            MalockNodeMessage message = new MalockNodeMessage();
             message.Key = key;
             message.Command = command;
             message.Sequence = sequence;

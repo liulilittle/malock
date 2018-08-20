@@ -15,12 +15,12 @@
         private static volatile int msgseq = 0;
         private static readonly int processid = Process.GetCurrentProcess().Id;
 
-        public const byte COMMON_COMMAND_TIMEOUT = 0xfe;
-        public const byte COMMON_COMMAND_ERROR = 0xff;
-        public const byte COMMON_COMMAND_HEARTBEAT = 0xfa;
+        internal const byte COMMON_COMMAND_TIMEOUT = 0xfe;
+        internal const byte COMMON_COMMAND_ERROR = 0xff;
+        internal const byte COMMON_COMMAND_HEARTBEAT = 0xfa;
 
-        public const byte LINK_MODE_CLIENT = 0;
-        public const byte LINK_MODE_SERVER = 1;
+        internal const byte LINK_MODE_CLIENT = 0;
+        internal const byte LINK_MODE_SERVER = 1;
         /// <summary>
         /// 同步块动作
         /// </summary>
@@ -51,14 +51,14 @@
 
         }
 
-        public virtual Stream Serialize()
+        internal virtual Stream Serialize()
         {
             MemoryStream ms = new MemoryStream();
             this.Serialize(ms);
             return ms;
         }
 
-        public void Serialize(Stream stream)
+        internal void Serialize(Stream stream)
         {
             if (stream == null)
             {
@@ -68,7 +68,7 @@
             this.Serialize(bw);
         }
 
-        public virtual void Serialize(BinaryWriter writer)
+        internal virtual void Serialize(BinaryWriter writer)
         {
             if (writer == null)
             {
@@ -78,7 +78,7 @@
             writer.Write(this.Sequence);
         }
 
-        protected static bool DeserializeTo(MalockMessage message, BinaryReader reader)
+        internal static bool DeserializeTo(MalockMessage message, BinaryReader reader)
         {
             if (message == null)
             {
@@ -102,7 +102,7 @@
             return true;
         }
 
-        protected internal static void WriteStringToStream(BinaryWriter writer, string s)
+        internal static void WriteStringToStream(BinaryWriter writer, string s)
         {
             if (writer == null)
             {
@@ -121,7 +121,7 @@
             }
         }
 
-        protected internal static string FromStringInReadStream(BinaryReader reader)
+        internal static string FromStringInReadStream(BinaryReader reader)
         {
             string s;
             if (!MalockMessage.TryFromStringInReadStream(reader, out s))
@@ -131,7 +131,7 @@
             return s;
         }
 
-        protected internal static bool TryFromStringInReadStream(BinaryReader reader, out string s)
+        internal static bool TryFromStringInReadStream(BinaryReader reader, out string s)
         {
             s = null;
             if (reader == null)
@@ -161,7 +161,7 @@
             return true;
         }
 
-        protected internal static bool StreamIsReadable(Stream stream, int len)
+        internal static bool StreamIsReadable(Stream stream, int len)
         {
             if (stream == null || !stream.CanRead)
             {
@@ -170,7 +170,7 @@
             return unchecked(stream.Position + len) <= stream.Length;
         }
 
-        public static int NewId()
+        internal static int NewId()
         {
             return Interlocked.Increment(ref msgseq);
         }

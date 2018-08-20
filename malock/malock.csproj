@@ -42,14 +42,14 @@
     <Compile Include="Auxiliary\NetAuxiliary.cs" />
     <Compile Include="Auxiliary\Ipep.cs" />
     <Compile Include="Auxiliary\MalockSocketAuxiliary.cs" />
-    <Compile Include="Client\IWaitableHandler.cs" />
+    <Compile Include="Client\IWaitable.cs" />
     <Compile Include="Client\HandleInfo.cs" />
     <Compile Include="Client\MalockMixClient.cs" />
     <Compile Include="Client\MalockSocket.cs" />
     <Compile Include="Client\MalockSocketException.cs" />
     <Compile Include="Client\MalockSocketStream.cs" />
-    <Compile Include="Common\MalockNameNodeMessage.cs" />
-    <Compile Include="Common\MalockDataNodeMessage.cs" />
+    <Compile Include="Common\MalockNnsMessage.cs" />
+    <Compile Include="Common\MalockNodeMessage.cs" />
     <Compile Include="Common\MalockNetworkMessage.cs" />
     <Compile Include="Core\AsyncAutoResetEvent.cs" />
     <Compile Include="Core\StackAutoResetEvent.cs" />
@@ -58,7 +58,7 @@
     <Compile Include="Core\SpinLock.cs" />
     <Compile Include="Core\Timer.cs" />
     <Compile Include="Core\TimerScheduler.cs" />
-    <Compile Include="IHandle.cs" />
+    <Compile Include="IEventWaitHandle.cs" />
     <Compile Include="Malock.cs" />
     <Compile Include="Monitor.cs" />
     <Compile Include="Client\EventWaitHandle.cs" />

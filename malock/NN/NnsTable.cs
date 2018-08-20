@@ -6,7 +6,7 @@
     using System.Collections.Generic;
     using System.IO;
 
-    public class NnsTable
+    internal sealed class NnsTable
     {
         private ConcurrentDictionary<string, Host> entrys = null;
         private ConcurrentDictionary<string, Host> hosts = null;
@@ -181,7 +181,7 @@
             return this.hosts.Keys;
         }
 
-        internal NnsTable()
+        public NnsTable()
         {
             this.entrys = new ConcurrentDictionary<string, Host>();
             this.hosts = new ConcurrentDictionary<string, Host>();

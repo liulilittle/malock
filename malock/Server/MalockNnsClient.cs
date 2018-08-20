@@ -5,7 +5,7 @@
     using malock.Auxiliary;
     using System;
     using System.IO;
-    using MSG = global::malock.Common.MalockNameNodeMessage;
+    using MSG = global::malock.Common.MalockNnsMessage;
     using NnsClient = global::malock.NN.NnsClient;
 
     internal class MalockNnsClient : NnsClient

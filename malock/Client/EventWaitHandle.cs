@@ -7,8 +7,13 @@
     using System.Threading;
     using Timer = global::malock.Core.Timer;
 
-    public abstract class EventWaitHandle : IHandle
+    public abstract class EventWaitHandle : IEventWaitHandle
     {
+        public const int kERROR_NOERROR = 0;
+        public const int kERROR_ABORTED = 1;
+        public const int kERROR_TIMEOUT = 2;
+        public const int kERROR_ERRORNO = 3;
+
         public static void Sleep(int millisecondsTimeout)
         {
             Thread.Sleep(millisecondsTimeout);
@@ -42,9 +47,11 @@
             return thread;
         }
 
+        private static readonly HandleInfo[] emptryhandleinfos = new HandleInfo[0];
         private readonly MalockClient malock = null;
         private volatile Thread enterthread = null;
         private volatile int entercount = 0;
+        private readonly object owner = null;
         private readonly object syncobj = new object();
         private readonly Timer ackstatetimer = null;
 
@@ -54,7 +61,7 @@
             private set;
         }
 
-        public EventWaitHandle Handle
+        EventWaitHandle IEventWaitHandle.Handle
         {
             get
             {
@@ -82,7 +89,7 @@
             return this.malock.Identity;
         }
 
-        internal EventWaitHandle(string key, MalockClient malock)
+        internal EventWaitHandle(object owner, string key, MalockClient malock)
         {
             if (malock == null)
             {
@@ -96,6 +103,7 @@
             {
                 throw new ArgumentOutOfRangeException("Key is absolutely not allowed to be an empty string");
             }
+            this.owner = owner;
             this.Key = key;
             this.malock = malock;
             this.malock.Aborted += this.ProcessAbort;
@@ -108,6 +116,11 @@
             } while (false);
         }
 
+        public virtual object GetOwner()
+        {
+            return this.owner;
+        }
+
         private void OnAckstatetimerTick(object sender, EventArgs e)
         {
             Exception exception = null;
@@ -116,12 +129,12 @@
 
         private bool TryPostAckLockStateMessage(ref Exception exception)
         {
-            byte errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER;
+            byte errno = MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER;
             lock (this.syncobj)
             {
                 if (this.enterthread == null)
                 {
-                    errno = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT;
+                    errno = MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT;
                 }
             }
             MalockMessage message = this.NewMesssage(errno, -1);
@@ -145,7 +158,7 @@
             return this.TryEnter(-1);
         }
 
-        private class Waitable : IWaitableHandler
+        private class Waitable : IWaitable
         {
             private readonly ManualResetEvent signal = null;
 
@@ -180,12 +193,12 @@
             }
         }
 
-        public static IWaitableHandler NewDefaultWaitable()
+        public static IWaitable NewDefaultWaitable()
         {
             return new Waitable();
         }
 
-        protected virtual IWaitableHandler NewWaitable()
+        protected virtual IWaitable NewWaitable()
         {
             return NewDefaultWaitable();
         }
@@ -196,7 +209,7 @@
             public bool localTaken;
             public bool aborted;
             private EventWaitHandle handle;
-            private IWaitableHandler signal;
+            private IWaitable signal;
 
             public MalockTryEnterCallback(EventWaitHandle handle)
             {
@@ -232,7 +245,7 @@
                 }
                 else if (error == MalockMessage.Mappable.ERROR_NOERROR)
                 {
-                    if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER)
+                    if (message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ENTER)
                     {
                         this.localTaken = true;
                     }
@@ -314,6 +327,11 @@
                         "An unknown interrupt occurred in the connection between the Malock and the server");
         }
 
+        private static TimeoutException NewTimeoutException()
+        {
+            return new TimeoutException("The malock invoke exceeded the expected maximum allowable timeout");
+        }
+
         protected internal virtual bool TryEnter(int millisecondsTimeout)
         {
             Exception exception = null;
@@ -328,14 +346,14 @@
         private bool TryPostEnterMessage(int millisecondsTimeout, Action<int, MalockMessage, Stream> callback,
             ref Exception exception)
         {
-            byte cmd = MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER;
+            byte cmd = MalockNodeMessage.CLIENT_COMMAND_LOCK_ENTER;
             MalockMessage message = this.NewMesssage(cmd, millisecondsTimeout);
             return MalockMessage.TryInvokeAsync(this.malock, message, millisecondsTimeout, callback, ref exception);
         }
 
         private bool TryPostExitMessage(ref Exception exception)
         {
-            MalockMessage message = this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT, -1);
+            MalockMessage message = this.NewMesssage(MalockNodeMessage.CLIENT_COMMAND_LOCK_EXIT, -1);
             return MalockMessage.TrySendMessage(this.malock, message, ref exception);
         }
 
@@ -372,7 +390,7 @@
 
         private MalockMessage NewMesssage(byte command, int timeout)
         {
-            MalockDataNodeMessage message = new MalockDataNodeMessage();
+            MalockNodeMessage message = new MalockNodeMessage();
             message.Sequence = MalockMessage.NewId();
             message.Key = this.Key;
             message.Command = command;
@@ -395,40 +413,146 @@
 
         protected internal virtual bool TryGetAllInfo(out IEnumerable<HandleInfo> infos, ref Exception exception)
         {
-            IList<HandleInfo> results = new List<HandleInfo>();
-            infos = results;
-            using (AutoResetEvent events = new AutoResetEvent(false))
+            return TryGetAllInfo(Malock.DefaultTimeout, out infos, ref exception);
+        }
+
+        protected internal virtual bool TryGetAllInfo(int timeout, out IEnumerable<HandleInfo> infos, ref Exception exception)
+        {
+            IList<HandleInfo> out_infos = emptryhandleinfos;
+            Exception out_exception = null;
+            try
             {
-                bool success = false;
-                bool abort = false;
-                if (!MalockMessage.TryInvokeAsync(this.malock, this.NewMesssage(MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO, -1), -1,
-                    (errno, message, stream) =>
+                if (timeout <= 0 && timeout != -1)
                 {
-                    if (errno == MalockMessage.Mappable.ERROR_NOERROR)
+                    out_exception = NewTimeoutException();
+                    return false;
+                }
+                using (ManualResetEvent events = new ManualResetEvent(false))
+                {
+                    bool success = false;
+                    bool abort = false;
+                    if (!MalockMessage.TryInvokeAsync(this.malock, this.NewMesssage(MalockNodeMessage.CLIENT_COMMAND_GETALLINFO, timeout), timeout,
+                        (errno, message, stream) =>
                     {
-                        if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO)
+                        if (errno == MalockMessage.Mappable.ERROR_NOERROR)
                         {
-                            success = HandleInfo.Fill(results, stream);
+                            if (message.Command == MalockNodeMessage.CLIENT_COMMAND_GETALLINFO)
+                            {
+                                out_infos = new List<HandleInfo>();
+                                success = HandleInfo.Fill(out_infos, stream);
+                            }
                         }
-                    }
-                    else if (errno == MalockMessage.Mappable.ERROR_ABORTED)
+                        else if (errno == MalockMessage.Mappable.ERROR_ABORTED)
+                        {
+                            abort = true;
+                        }
+                        else if (errno == MalockMessage.Mappable.ERROR_TIMEOUT)
+                        {
+                            out_exception = NewTimeoutException();
+                        }
+                        events.Set();
+                    }, ref out_exception) || out_exception != null)
                     {
-                        abort = true;
+                        return false;
                     }
-                    events.Set();
-                }, ref exception) || exception != null)
-                {
-                    return false;
+                    events.WaitOne();
+                    if (abort)
+                    {
+                        out_exception = NewAbortedException();
+                        return false;
+                    }
+                    return success;
                 }
-                events.WaitOne();
-                if (abort)
-                {
-                    exception = NewAbortedException();
-                    return false;
-                }
-                return success;
+            }
+            finally
+            {
+                infos = out_infos;
+                exception = out_exception;
             }
         }
 
+        protected internal virtual int TryGetAllInfo(out IEnumerable<HandleInfo> infos)
+        {
+            return TryGetAllInfo(Malock.DefaultTimeout, out infos);
+        }
+
+        protected internal virtual int TryGetAllInfo(int timeout, out IEnumerable<HandleInfo> infos)
+        {
+            IEnumerable<HandleInfo> result_handles = emptryhandleinfos;
+            int result_errno = kERROR_ERRORNO;
+            if (timeout <= 0 && timeout != -1)
+            {
+                result_errno = kERROR_TIMEOUT;
+            }
+            else
+            {
+                using (ManualResetEvent events = new ManualResetEvent(false))
+                {
+                    GetAllInfoAsync(timeout, (errno, models) =>
+                    {
+                        result_errno = errno;
+                        result_handles = models;
+                        events.Set();
+                    });
+                    events.WaitOne();
+                }
+            }
+            infos = result_handles;
+            return result_errno;
+        }
+
+        protected internal virtual void GetAllInfoAsync(Action<int, IEnumerable<HandleInfo>> state)
+        {
+            GetAllInfoAsync(Malock.DefaultTimeout, state);
+        }
+
+        protected internal virtual void GetAllInfoAsync(int timeout, Action<int, IEnumerable<HandleInfo>> state)
+        {
+            if (state == null)
+            {
+                throw new ArgumentNullException("callback");
+            }
+            if (timeout <= 0 && timeout != -1)
+            {
+                state(kERROR_TIMEOUT, emptryhandleinfos);
+            }
+            else
+            {
+                Exception exception = null;
+                if (!MalockMessage.TryInvokeAsync(this.malock,
+                    this.NewMesssage(MalockNodeMessage.CLIENT_COMMAND_GETALLINFO, timeout), timeout,
+                       (errno, message, stream) =>
+                       {
+                           if (errno == MalockMessage.Mappable.ERROR_NOERROR)
+                           {
+                               bool error = true;
+                               if (message.Command == MalockNodeMessage.CLIENT_COMMAND_GETALLINFO)
+                               {
+                                   IList<HandleInfo> results = new List<HandleInfo>();
+                                   if (HandleInfo.Fill(results, stream))
+                                   {
+                                       error = false;
+                                       state(kERROR_NOERROR, results);
+                                   }
+                               }
+                               if (error)
+                               {
+                                   state(kERROR_ERRORNO, emptryhandleinfos);
+                               }
+                           }
+                           else if (errno == MalockMessage.Mappable.ERROR_ABORTED)
+                           {
+                               state(kERROR_ABORTED, emptryhandleinfos);
+                           }
+                           else if (errno == MalockMessage.Mappable.ERROR_TIMEOUT)
+                           {
+                               state(kERROR_TIMEOUT, emptryhandleinfos);
+                           }
+                       }, ref exception))
+                {
+                    state(kERROR_ABORTED, emptryhandleinfos);
+                }
+            }
+        }
     }
 }

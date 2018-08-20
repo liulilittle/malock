@@ -1,6 +1,6 @@
 ﻿namespace malock.Client
 {
-    public interface IWaitableHandler
+    public interface IWaitable
     {
         bool WaitOne();
 

@@ -87,7 +87,7 @@
             }
             else if (socket.LinkMode == MalockMessage.LINK_MODE_SERVER)
             {
-                MalockDataNodeMessage message = (MalockDataNodeMessage)socket.UserToken;
+                MalockNodeMessage message = (MalockNodeMessage)socket.UserToken;
                 if (message != null)
                 {
                     string[] keys;
@@ -106,10 +106,10 @@
 
         private void ProcessReceived(object sender, MalockSocketStream e)
         {
-            MalockDataNodeMessage message = null;
+            MalockNodeMessage message = null;
             using (Stream stream = e.Stream)
             {
-                MalockDataNodeMessage.TryDeserialize(stream, out message);
+                MalockNodeMessage.TryDeserialize(stream, out message);
             }
             if (message != null)
             {
@@ -117,30 +117,30 @@
             }
         }
 
-        private void ProcessClient(MalockSocket socket, MalockDataNodeMessage message)
+        private void ProcessClient(MalockSocket socket, MalockNodeMessage message)
         {
-            if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER ||
-                message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT ||
-                message.Command == MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO || 
-                message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT || 
-                message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER)
+            if (message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ENTER ||
+                message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_EXIT ||
+                message.Command == MalockNodeMessage.CLIENT_COMMAND_GETALLINFO || 
+                message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT || 
+                message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER)
             {
                 MalockTaskInfo info = new MalockTaskInfo();
                 switch (message.Command)
                 {
-                    case MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER:
+                    case MalockNodeMessage.CLIENT_COMMAND_LOCK_ENTER:
                         info.Type = MalockTaskType.kEnter;
                         break;
-                    case MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT:
+                    case MalockNodeMessage.CLIENT_COMMAND_LOCK_EXIT:
                         info.Type = MalockTaskType.kExit;
                         break;
-                    case MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO:
+                    case MalockNodeMessage.CLIENT_COMMAND_GETALLINFO:
                         info.Type = MalockTaskType.kGetAllInfo;
                         break;
-                    case MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT:
+                    case MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT:
                         info.Type = MalockTaskType.kAckPipelineExit;
                         break;
-                    case MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER:
+                    case MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER:
                         info.Type = MalockTaskType.kAckPipelineEnter;
                         break;
                 }
@@ -155,11 +155,11 @@
                     info.Stopwatch = sw;
                     sw.Start();
                 } while (false);
-                if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_EXIT)
+                if (message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_EXIT)
                 {
                     this.malockEngine.Exit(info);
                 }
-                else if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ENTER)
+                else if (message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ENTER)
                 {
                     if (this.malockEngine.Enter(info))
                     {
@@ -170,30 +170,30 @@
                         this.malockEngine.GetPoll().Add(info);
                     }
                 }
-                else if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT)
+                else if (message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEEXIT)
                 {
                     this.malockEngine.AckPipelineExit(info); // anti-deadlock
                 }
-                else if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER)
+                else if (message.Command == MalockNodeMessage.CLIENT_COMMAND_LOCK_ACKPIPELINEENTER)
                 {
                     this.malockEngine.AckPipelineEnter(info);
                 }
-                else if (message.Command == MalockDataNodeMessage.CLIENT_COMMAND_GETALLINFO)
+                else if (message.Command == MalockNodeMessage.CLIENT_COMMAND_GETALLINFO)
                 {
                     this.malockEngine.GetAllInfo(info);
                 }
             }
         }
 
-        private void ProcessServer(MalockSocket socket, MalockDataNodeMessage message)
+        private void ProcessServer(MalockSocket socket, MalockNodeMessage message)
         {
-            if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_ENTER)
+            if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_ENTER)
             {
                 socket.UserToken = message;
                 MalockTable malock = this.malockEngine.GetTable();
                 malock.Enter(message.Key, message.Identity);
             }
-            else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_EXIT)
+            else if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_EXIT)
             {
                 MalockTable malock = this.malockEngine.GetTable();
                 malock.Exit(message.Key, message.Identity);
@@ -206,14 +206,14 @@
                     });
                 } while (false);
             }
-            else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_FREE)
+            else if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_FREE)
             {
                 string[] keys;
                 MalockTable malock = this.malockEngine.GetTable();
                 malock.Exit(message.Identity, out keys);
                 this.malockEngine.AckPipelineEnter(message.Identity, keys);
             }
-            else if (message.Command == MalockDataNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
+            else if (message.Command == MalockNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO)
             {
                 this.malockEngine.GetAllInfo(new MalockTaskInfo()
                 {
@@ -225,7 +225,7 @@
             }
         }
 
-        private void ProcessMessage(MalockSocket socket, MalockDataNodeMessage message)
+        private void ProcessMessage(MalockSocket socket, MalockNodeMessage message)
         {
             switch (socket.LinkMode)
             {

@@ -5,7 +5,7 @@
     using System;
     using System.IO;
 
-    public unsafe class NnsServer
+    public unsafe sealed class NnsServer
     {
         private MalockSocketListener malockListener = null;
         private NnsTable nnsTable = null;
@@ -69,10 +69,10 @@
 
         private void ProcessReceived(object sender, MalockSocketStream e)
         {
-            MalockNameNodeMessage message = null;
+            MalockNnsMessage message = null;
             using (Stream stream = e.Stream)
             {
-                MalockNameNodeMessage.TryDeserialize(stream, out message);
+                MalockNnsMessage.TryDeserialize(stream, out message);
                 if (message != null)
                 {
                     this.ProcessMessage(e.Socket, message, stream);
@@ -84,13 +84,13 @@
         {
             string identity;
             HostEntry entry = this.nnsTable.GetEntry(key, out identity);
-            MalockNameNodeMessage message = new MalockNameNodeMessage();
+            MalockNnsMessage message = new MalockNnsMessage();
             message.Key = key;
             message.Sequence = sequence;
             message.Command = MalockMessage.COMMON_COMMAND_ERROR;
             if (entry != null)
             {
-                message.Command = MalockNameNodeMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO;
+                message.Command = MalockNnsMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO;
             }
             using (MemoryStream stream = new MemoryStream())
             {
@@ -106,11 +106,11 @@
             }
             if (entry != null && !string.IsNullOrEmpty(identity))
             {
-                message = new MalockNameNodeMessage();
+                message = new MalockNnsMessage();
                 message.Key = key;
                 message.Identity = identity;
                 message.Sequence = MalockMessage.NewId();
-                message.Command = MalockNameNodeMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO;
+                message.Command = MalockNnsMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO;
                 using (MemoryStream stream = new MemoryStream())
                 {
                     using (BinaryWriter bw = new BinaryWriter(stream))
@@ -126,9 +126,9 @@
             }
         }
 
-        private void DumpHostEntry(MalockSocket socket, MalockNameNodeMessage message)
+        private void DumpHostEntry(MalockSocket socket, MalockNnsMessage message)
         {
-            MalockNameNodeMessage msg = new MalockNameNodeMessage();
+            MalockNnsMessage msg = new MalockNnsMessage();
             msg.Sequence = message.Sequence;
             msg.Command = message.Command;
             do
@@ -149,7 +149,7 @@
 
         private void RegisterHostEntry(MalockSocket socket, int sequence, HostEntry entry)
         {
-            MalockNameNodeMessage message = new MalockNameNodeMessage();
+            MalockNnsMessage message = new MalockNnsMessage();
             message.Sequence = sequence;
             message.Command = MalockMessage.COMMON_COMMAND_ERROR;
             if (entry != null)
@@ -158,7 +158,7 @@
                 {
                     if (this.nnsTable.Register(socket.Identity, entry))
                     {
-                        message.Command = MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO;
+                        message.Command = MalockNnsMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO;
                     }
                     this.nnsTable.SetAvailable(socket.Identity, socket.Address, true);
                 }
@@ -166,13 +166,13 @@
             MalockMessage.TrySendMessage(socket, message);
         }
 
-        private void ProcessClient(MalockSocket socket, MalockNameNodeMessage message)
+        private void ProcessClient(MalockSocket socket, MalockNnsMessage message)
         {
-            if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO)
+            if (message.Command == MalockNnsMessage.CLIENT_COMMAND_QUERYHOSTENTRYINFO)
             {
                 this.QueryHostEntry(socket, message.Sequence, message.Key);
             }
-            else if (message.Command == MalockNameNodeMessage.CLIENT_COMMAND_DUMPHOSTENTRYINFO)
+            else if (message.Command == MalockNnsMessage.CLIENT_COMMAND_DUMPHOSTENTRYINFO)
             {
                 this.DumpHostEntry(socket, message);
             }
@@ -190,23 +190,23 @@
             }
         }
 
-        private void ProcessServer(MalockSocket socket, MalockNameNodeMessage message, Stream stream)
+        private void ProcessServer(MalockSocket socket, MalockNnsMessage message, Stream stream)
         {
-            if (message.Command == MalockNameNodeMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO)
+            if (message.Command == MalockNnsMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO)
             {
                 this.SynQueryHostEntry(socket, message.Identity, message.Key, HostEntry.Deserialize(stream));
             }
-            else if (message.Command == MalockNameNodeMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO)
+            else if (message.Command == MalockNnsMessage.SERVER_NDN_COMMAND_REGISTERHOSTENTRYINFO)
             {
                 this.RegisterHostEntry(socket, message.Sequence, HostEntry.Deserialize(stream));
             }
-            else if (message.Command == MalockNameNodeMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO)
+            else if (message.Command == MalockNnsMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO)
             {
                 this.DumpHostEntry(socket, message);
             }
         }
 
-        private void ProcessMessage(MalockSocket socket, MalockNameNodeMessage message, Stream stream)
+        private void ProcessMessage(MalockSocket socket, MalockNnsMessage message, Stream stream)
         {
             switch (socket.LinkMode)
             {

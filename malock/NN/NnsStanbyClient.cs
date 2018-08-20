@@ -6,7 +6,7 @@
     using System.IO;
     using MalockSocketStream = global::malock.Client.MalockSocketStream;
 
-    internal class NnsStanbyClient : MalockStandbyClient
+    internal sealed class NnsStanbyClient : MalockStandbyClient
     {
         private readonly NnsTable nnsTable = null;
 
@@ -21,15 +21,15 @@
 
         protected override void OnReceived(object sender, MalockSocketStream e)
         {
-            MalockNameNodeMessage message = null;
+            MalockNnsMessage message = null;
             using (Stream stream = e.Stream)
             {
-                if (!MalockNameNodeMessage.TryDeserialize(e.Stream, out message))
+                if (!MalockNnsMessage.TryDeserialize(e.Stream, out message))
                 {
                     this.Abort();
                     return;
                 }
-                if (message.Command == MalockNameNodeMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO)
+                if (message.Command == MalockNnsMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO)
                 {
                     this.DumpHostEntry(stream);
                 }
@@ -46,8 +46,8 @@
 
         protected override void OnConnected(object sender, EventArgs e)
         {
-            MalockNameNodeMessage message = new MalockNameNodeMessage();
-            message.Command = MalockNameNodeMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO;
+            MalockNnsMessage message = new MalockNnsMessage();
+            message.Command = MalockNnsMessage.SERVER_NNS_COMMAND_DUMPHOSTENTRYINFO;
             message.Sequence = MalockMessage.NewId();
             MalockMessage.TrySendMessage(this, message);
         }

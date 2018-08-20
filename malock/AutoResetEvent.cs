@@ -2,18 +2,18 @@
 {
     using global::malock.Client;
 
-    public class AutoResetEvent : IHandle
+    public class AutoResetEvent : IEventWaitHandle
     {
         private readonly EventWaitHandle handle;
 
         private sealed class WaitHandle : EventWaitHandle
         {
-            public WaitHandle(string key, MalockClient malock) : base(key, malock)
+            public WaitHandle(object owner, string key, MalockClient malock) : base(owner, key, malock)
             {
 
             }
 
-            protected override IWaitableHandler NewWaitable()
+            protected override IWaitable NewWaitable()
             {
                 return base.NewWaitable();
             }
@@ -29,7 +29,7 @@
 
         public AutoResetEvent(string key, MalockClient malock)
         {
-            this.handle = new WaitHandle(key, malock);
+            this.handle = new WaitHandle(this, key, malock);
         }
 
         public bool WaitOne()

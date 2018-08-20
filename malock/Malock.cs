@@ -140,31 +140,105 @@
 
         public static bool Enter(EventWaitHandle handle, int millisecondsTimeout)
         {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
             return handle.TryEnter(millisecondsTimeout);
         }
 
-        public static bool Exit(IHandle handle)
+        public static bool Exit(IEventWaitHandle handle)
         {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
             return Exit(handle.Handle);
         }
 
-        public static bool Enter(IHandle handle, int millisecondsTimeout)
+        public static bool Enter(IEventWaitHandle handle, int millisecondsTimeout)
         {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
             return Enter(handle.Handle, millisecondsTimeout);
         }
 
-        public static bool Enter(IHandle handle)
+        public static bool Enter(IEventWaitHandle handle)
         {
             return Enter(handle, -1);
         }
 
         public static bool Exit(EventWaitHandle handle)
         {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
             return handle.Exit();
         }
 
-        public static IEnumerable<HandleInfo> GetAllInfo(IHandle handle)
+        public static bool TryGetAllInfo(EventWaitHandle handle, out IEnumerable<HandleInfo> s, ref Exception exception)
         {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
+            return handle.TryGetAllInfo(out s, ref exception);
+        }
+
+        public static bool TryGetAllInfo(EventWaitHandle handle, int timeout, out IEnumerable<HandleInfo> s, ref Exception exception)
+        {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
+            return handle.TryGetAllInfo(timeout, out s, ref exception);
+        }
+
+        public static void GetAllInfoAsync(EventWaitHandle handle, Action<int, IEnumerable<HandleInfo>> callback)
+        {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
+            handle.GetAllInfoAsync(callback);
+        }
+
+        public static void GetAllInfoAsync(EventWaitHandle handle, int timeout, Action<int, IEnumerable<HandleInfo>> callback)
+        {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
+            handle.GetAllInfoAsync(timeout, callback);
+        }
+
+        public static int TryGetAllInfo(EventWaitHandle handle, out IEnumerable<HandleInfo> s)
+        {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
+            return handle.TryGetAllInfo(out s);
+        }
+
+        public static int TryGetAllInfo(EventWaitHandle handle, int timeout, out IEnumerable<HandleInfo> s)
+        {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
+            return handle.TryGetAllInfo(timeout, out s);
+        }
+
+        public static IEnumerable<HandleInfo> GetAllInfo(IEventWaitHandle handle)
+        {
+            if (handle == null)
+            {
+                throw new ArgumentNullException("handle");
+            }
             return GetAllInfo(handle.Handle);
         }
 

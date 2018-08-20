@@ -1,6 +1,6 @@
 ﻿namespace malock.Client
 {
-    using MSG = global::malock.Common.MalockDataNodeMessage;
+    using MSG = global::malock.Common.MalockNodeMessage;
 
     public class MalockClient : MalockMixClient<MSG>
     {

@@ -3,7 +3,7 @@
     using global::malock.Common;
     using global::malock.Core;
     using System;
-    using MSG = global::malock.Common.MalockDataNodeMessage;
+    using MSG = global::malock.Common.MalockNodeMessage;
     using System.Collections.Concurrent;
     using System.Net;
 
