@@ -179,76 +179,67 @@
             return handle.Exit();
         }
 
-        public static bool TryGetAllInfo(EventWaitHandle handle, out IEnumerable<HandleInfo> s, ref Exception exception)
+        public static bool TryGetAllInfo(MalockClient malock, out IEnumerable<HandleInfo> s, ref Exception exception)
         {
-            if (handle == null)
+            if (malock == null)
             {
                 throw new ArgumentNullException("handle");
             }
-            return handle.TryGetAllInfo(out s, ref exception);
+            return malock.TryGetAllInfo(out s, ref exception);
         }
 
-        public static bool TryGetAllInfo(EventWaitHandle handle, int timeout, out IEnumerable<HandleInfo> s, ref Exception exception)
+        public static bool TryGetAllInfo(MalockClient malock, int timeout, out IEnumerable<HandleInfo> s, ref Exception exception)
         {
-            if (handle == null)
+            if (malock == null)
             {
                 throw new ArgumentNullException("handle");
             }
-            return handle.TryGetAllInfo(timeout, out s, ref exception);
+            return malock.TryGetAllInfo(timeout, out s, ref exception);
         }
 
-        public static void GetAllInfoAsync(EventWaitHandle handle, Action<int, IEnumerable<HandleInfo>> callback)
+        public static void GetAllInfoAsync(MalockClient malock, Action<int, IEnumerable<HandleInfo>> callback)
         {
-            if (handle == null)
+            if (malock == null)
             {
-                throw new ArgumentNullException("handle");
+                throw new ArgumentNullException("malock");
             }
-            handle.GetAllInfoAsync(callback);
+            malock.GetAllInfoAsync(callback);
         }
 
-        public static void GetAllInfoAsync(EventWaitHandle handle, int timeout, Action<int, IEnumerable<HandleInfo>> callback)
+        public static void GetAllInfoAsync(MalockClient malock, int timeout, Action<int, IEnumerable<HandleInfo>> callback)
         {
-            if (handle == null)
+            if (malock == null)
             {
-                throw new ArgumentNullException("handle");
+                throw new ArgumentNullException("malock");
             }
-            handle.GetAllInfoAsync(timeout, callback);
+            malock.GetAllInfoAsync(timeout, callback);
         }
 
-        public static int TryGetAllInfo(EventWaitHandle handle, out IEnumerable<HandleInfo> s)
+        public static int TryGetAllInfo(MalockClient malock, out IEnumerable<HandleInfo> s)
         {
-            if (handle == null)
+            if (malock == null)
             {
-                throw new ArgumentNullException("handle");
+                throw new ArgumentNullException("malock");
             }
-            return handle.TryGetAllInfo(out s);
+            return malock.TryGetAllInfo(out s);
         }
 
-        public static int TryGetAllInfo(EventWaitHandle handle, int timeout, out IEnumerable<HandleInfo> s)
+        public static int TryGetAllInfo(MalockClient malock, int timeout, out IEnumerable<HandleInfo> s)
         {
-            if (handle == null)
+            if (malock == null)
             {
-                throw new ArgumentNullException("handle");
+                throw new ArgumentNullException("malock");
             }
-            return handle.TryGetAllInfo(timeout, out s);
+            return malock.TryGetAllInfo(timeout, out s);
         }
 
-        public static IEnumerable<HandleInfo> GetAllInfo(IEventWaitHandle handle)
+        public static IEnumerable<HandleInfo> GetAllInfo(MalockClient malock)
         {
-            if (handle == null)
+            if (malock == null)
             {
-                throw new ArgumentNullException("handle");
+                throw new ArgumentNullException("malock");
             }
-            return GetAllInfo(handle.Handle);
-        }
-
-        public static IEnumerable<HandleInfo> GetAllInfo(EventWaitHandle handle)
-        {
-            if (handle == null)
-            {
-                throw new ArgumentNullException("handle");
-            }
-            return handle.GetAllInfo();
+            return malock.GetAllInfo();
         }
     }
 }

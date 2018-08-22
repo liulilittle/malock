@@ -80,6 +80,27 @@
             }
         }
 
+        private bool AbortHostEntry(string identity, string address)
+        {
+            if (string.IsNullOrEmpty(identity) || string.IsNullOrEmpty(address))
+            {
+                return false;
+            }
+            lock (this.nnsTable.GetSynchronizationObject())
+            {
+                if (!this.nnsTable.ContainsIdentity(identity))
+                {
+                    return false;
+                }
+                this.nnsTable.SetAvailable(identity, address, false);
+                if (!this.nnsTable.IsAvailable(identity))
+                {
+                    this.nnsTable.Unregister(identity);
+                }
+                return true;
+            }
+        }
+
         private void QueryHostEntry(MalockSocket socket, int sequence, string key)
         {
             string identity;
@@ -104,26 +125,33 @@
                     MalockMessage.TrySendMessage(socket, stream);
                 }
             }
-            if (entry != null && !string.IsNullOrEmpty(identity))
+            this.PostSynHostEntryMessage(this.nnsStanbyClient, key, identity, entry);
+        }
+
+        private bool PostSynHostEntryMessage(IMalockSocket socket, string key, string identity, HostEntry entry)
+        {
+            if (entry == null || string.IsNullOrEmpty(identity) || string.IsNullOrEmpty(key))
             {
-                message = new MalockNnsMessage();
-                message.Key = key;
-                message.Identity = identity;
-                message.Sequence = MalockMessage.NewId();
-                message.Command = MalockNnsMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO;
-                using (MemoryStream stream = new MemoryStream())
+                return false;
+            }
+            MalockNnsMessage message = new MalockNnsMessage();
+            message.Key = key;
+            message.Identity = identity;
+            message.Sequence = MalockMessage.NewId();
+            message.Command = MalockNnsMessage.SERVER_NNS_COMMAND_SYN_HOSTENTRYINFO;
+            using (MemoryStream stream = new MemoryStream())
+            {
+                using (BinaryWriter bw = new BinaryWriter(stream))
                 {
-                    using (BinaryWriter bw = new BinaryWriter(stream))
+                    message.Serialize(bw);
+                    if (entry != null)
                     {
-                        message.Serialize(bw);
-                        if (entry != null)
-                        {
-                            entry.Serialize(bw);
-                        }
-                        MalockMessage.TrySendMessage(this.nnsStanbyClient, stream);
+                        entry.Serialize(bw);
                     }
+                    MalockMessage.TrySendMessage(socket, stream);
                 }
             }
+            return true;
         }
 
         private void DumpHostEntry(MalockSocket socket, MalockNnsMessage message)
@@ -225,13 +253,9 @@
         private void ProcessAborted(object sender, EventArgs e)
         {
             MalockSocket socket = (MalockSocket)sender;
-            lock (this.nnsTable.GetSynchronizationObject())
+            if (socket.LinkMode == MalockMessage.LINK_MODE_SERVER)
             {
-                this.nnsTable.SetAvailable(socket.Identity, socket.Address, false);
-                if (!this.nnsTable.IsAvailable(socket.Identity))
-                {
-                    this.nnsTable.Unregister(socket.Identity);
-                }
+                this.AbortHostEntry(socket.Identity, socket.Address);
             }
             lock (socket)
             {

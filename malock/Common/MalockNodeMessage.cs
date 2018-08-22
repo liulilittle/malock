@@ -88,6 +88,22 @@
             return m;
         }
 
+        internal static MalockNodeMessage New(string key, string identity, byte command, int sequence, int timeout)
+        {
+            MalockNodeMessage message = new MalockNodeMessage();
+            message.Sequence = sequence;
+            message.Key = key;
+            message.Command = command;
+            message.Timeout = timeout;
+            message.Identity = identity;
+            return message;
+        }
+
+        internal static MalockNodeMessage New(string key, string identity, byte command, int timeout)
+        {
+            return New(key, identity, command, MalockMessage.NewId(), timeout);
+        }
+
         internal static bool TryDeserialize(Stream stream, out MalockNodeMessage message)
         {
             return (message = MalockNodeMessage.Deserialize(stream)) != null;

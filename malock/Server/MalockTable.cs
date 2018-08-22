@@ -11,9 +11,9 @@
     /// </summary>
     internal class MalockTable
     {
-        public class LockerInfo
+        public class SyncBlockIndex
         {
-            public AtomicBoolean Locker
+            public AtomicBoolean Lock
             {
                 get;
                 private set;
@@ -51,15 +51,15 @@
                 private set;
             }
 
-            public LockerInfo(string key)
+            public SyncBlockIndex(string key)
             {
                 this.Key = key;
-                this.Locker = new AtomicBoolean(false);
+                this.Lock = new AtomicBoolean(false);
             }
         }
 
-        private IDictionary<string, LockerInfo> lockInfos = new ConcurrentDictionary<string, LockerInfo>();
-        private IDictionary<string, ISet<string>> mapKeys = new ConcurrentDictionary<string, ISet<string>>();
+        private IDictionary<string, SyncBlockIndex> syncblocks = new ConcurrentDictionary<string, SyncBlockIndex>();
+        private IDictionary<string, ISet<string>> mapkeys = new ConcurrentDictionary<string, ISet<string>>();
         private readonly object syncobj = new object();
 
         private static readonly string[] EmptryKeyNames = new string[0];
@@ -79,15 +79,15 @@
             {
                 throw new ArgumentOutOfRangeException("key");
             }
-            lock (lockInfos)
+            lock (syncblocks)
             {
-                if (lockInfos.ContainsKey(key))
+                if (syncblocks.ContainsKey(key))
                 {
                     return true;
                 }
                 else
                 {
-                    lockInfos.Add(key, new LockerInfo(key));
+                    syncblocks.Add(key, new SyncBlockIndex(key));
                 }
                 return true;
             }
@@ -103,9 +103,9 @@
             {
                 throw new ArgumentOutOfRangeException("key");
             }
-            lock (lockInfos)
+            lock (syncblocks)
             {
-                return lockInfos.Remove(key);
+                return syncblocks.Remove(key);
             }
         }
 
@@ -115,13 +115,13 @@
             {
                 throw new ArgumentNullException("identity");
             }
-            lock (mapKeys)
+            lock (mapkeys)
             {
                 ISet<string> keys;
-                if (!mapKeys.TryGetValue(identity, out keys))
+                if (!mapkeys.TryGetValue(identity, out keys))
                 {
                     keys = new HashSet<string>();
-                    mapKeys.Add(identity, keys);
+                    mapkeys.Add(identity, keys);
                 }
                 return keys != null;
             }
@@ -139,23 +139,23 @@
         private ISet<string> GetAllKeyByIdentity(string identity)
         {
             ISet<string> keys;
-            mapKeys.TryGetValue(identity, out keys);
+            mapkeys.TryGetValue(identity, out keys);
             return keys;
         }
 
         public IEnumerable<string> GetAllKey()
         {
-            return lockInfos.Keys;
+            return syncblocks.Keys;
         }
 
-        public IEnumerable<LockerInfo> GetAllLocker()
+        public IEnumerable<SyncBlockIndex> GetAllLocker()
         {
-            return lockInfos.Values;
+            return syncblocks.Values;
         }
 
         public bool ContainsKey(string key)
         {
-            return lockInfos.ContainsKey(key);
+            return syncblocks.ContainsKey(key);
         }
 
         public virtual bool IsEnter(string key)
@@ -176,7 +176,7 @@
             }
             lock (this.syncobj)
             {
-                LockerInfo info = GetLockerInfo(key);
+                SyncBlockIndex info = GetLockerInfo(key);
                 if (info == null)
                 {
                     return false;
@@ -192,10 +192,10 @@
             }
         }
 
-        protected virtual LockerInfo GetLockerInfo(string key)
+        protected virtual SyncBlockIndex GetLockerInfo(string key)
         {
-            LockerInfo info;
-            if (!lockInfos.TryGetValue(key, out info))
+            SyncBlockIndex info;
+            if (!syncblocks.TryGetValue(key, out info))
             {
                 return null;
             }
@@ -234,15 +234,15 @@
                 {
                     return false;
                 }
-                LockerInfo info;
-                if (!lockInfos.TryGetValue(key, out info))
+                SyncBlockIndex info;
+                if (!syncblocks.TryGetValue(key, out info))
                 {
                     return false;
                 }
                 AtomicBoolean locker = null;
                 lock (info)
                 {
-                    locker = info.Locker;
+                    locker = info.Lock;
                 }
                 bool localTaken = locker.CompareExchange(false, true);
                 if (localTaken)
@@ -333,8 +333,8 @@
             lock (this.syncobj)
             {
                 state = null;
-                LockerInfo info;
-                if (!lockInfos.TryGetValue(key, out info))
+                SyncBlockIndex info;
+                if (!syncblocks.TryGetValue(key, out info))
                 {
                     return false;
                 }
@@ -347,7 +347,7 @@
                         {
                             Monitor.Enter(keys);
                         }
-                        AtomicBoolean locker = info.Locker;
+                        AtomicBoolean locker = info.Lock;
                         if (!ignoreIdentity && info.Identity != identity)
                         {
                             return false;
@@ -421,7 +421,7 @@
                     }
                     if (freeKeySets)
                     {
-                        mapKeys.Remove(identity);
+                        mapkeys.Remove(identity);
                     }
                 }
                 return true;

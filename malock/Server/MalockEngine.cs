@@ -222,13 +222,7 @@
 
         private MalockMessage NewMessage(string key, string identity, byte command, int sequence, int timeout)
         {
-            MalockNodeMessage message = new MalockNodeMessage();
-            message.Key = key;
-            message.Command = command;
-            message.Sequence = sequence;
-            message.Timeout = timeout;
-            message.Identity = identity;
-            return message;
+            return MalockNodeMessage.New(key, identity, command, sequence, timeout);
         }
     }
 }

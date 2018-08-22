@@ -13,11 +13,24 @@
         private readonly MalockInnetSocket socket = null;
         private readonly MalockEngine engine = null;
         private readonly MalockConfiguration configuration = null;
+        private readonly int listenport = 0;
 
         public object Tag
         {
             get;
             set;
+        }
+
+        public string Identity
+        {
+            get;
+            private set;
+        }
+
+        public string Address
+        {
+            get;
+            private set;
         }
 
         public bool Available
@@ -43,9 +56,15 @@
             {
                 throw new ArgumentNullException("engine");
             }
-            this.engine = engine;
             this.configuration = configuration;
-            this.socket = new MalockInnetSocket(configuration.Identity, this.GetAddress(configuration), configuration.Port, MalockMessage.LINK_MODE_SERVER);
+            this.engine = engine;
+            do
+            {
+                this.Identity = configuration.Identity;
+                this.Address = this.GetAddress(configuration);
+                this.listenport = configuration.Port;
+            } while (false);
+            this.socket = new MalockInnetSocket(this.Identity, this.Address, this.GetListenPort(), MalockMessage.LINK_MODE_SERVER);
             this.socket.Received += this.OnReceived;
             this.socket.Connected += this.OnConnected;
             this.socket.Aborted += this.OnAborted;
@@ -55,6 +74,12 @@
         public MalockStandbyClient(string identity, string address, int listenport)
         {
             this.socket = new MalockInnetSocket(identity, address, listenport, MalockMessage.LINK_MODE_SERVER);
+            do
+            {
+                this.Identity = identity;
+                this.Address = address;
+                this.listenport = listenport;
+            } while (false);
             this.socket.Received += this.OnReceived;
             this.socket.Connected += this.OnConnected;
             this.socket.Aborted += this.OnAborted;
@@ -70,10 +95,7 @@
 
         protected virtual void OnConnected(object sender, EventArgs e)
         {
-            MalockNodeMessage message = new MalockNodeMessage();
-            message.Command = MalockNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO;
-            message.Sequence = MalockMessage.NewId();
-            message.Timeout = -1;
+            MalockMessage message = MalockNodeMessage.New(null, this.Identity, MalockNodeMessage.SERVER_COMMAND_SYN_LOADALLINFO, -1);
             MalockMessage.TrySendMessage(this, message);
         }
 
@@ -84,6 +106,12 @@
                 throw new ArgumentNullException("engine");
             }
             this.engine = engine;
+            do
+            {
+                this.Identity = identity;
+                this.Address = address;
+                this.listenport = listenport;
+            } while (false);
             this.socket = new MalockInnetSocket(identity, address, listenport, MalockMessage.LINK_MODE_SERVER);
             this.socket.Received += this.OnReceived;
             this.socket.Run();
@@ -101,6 +129,11 @@
                 throw new ArgumentNullException("configuration");
             }
             return configuration.StandbyNode;
+        }
+
+        protected virtual int GetListenPort()
+        {
+            return this.listenport;
         }
 
         public bool Send(byte[] buffer, int ofs, int len)
