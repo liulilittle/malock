@@ -39,7 +39,7 @@
             MalockClient malock = Malock.GetClient("test013", "127.0.0.1:6800", "127.0.0.1:6801").Run();
             malock.Ready += delegate
             {
-                Monitor m = new Monitor("OMFG", malock);
+                Monitor m = Monitor.New("OMFG", malock);
                 int num = 0;
                 for (int i = 0; i < 5; i++)
                 {

@@ -85,6 +85,7 @@
     <Compile Include="Server\MalockTaskPoll.cs" />
     <Compile Include="Server\MalockTaskType.cs" />
     <Compile Include="SpinLock.cs" />
+    <Compile Include="SyncBlockIndex.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Properties\" />

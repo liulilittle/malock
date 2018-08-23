@@ -2,13 +2,30 @@
 {
     using global::malock.Common;
     using System;
-    using System.Collections.Generic;
     using System.IO;
     using System.Threading;
     using Timer = global::malock.Core.Timer;
 
     public abstract class EventWaitHandle : IEventWaitHandle
     {
+        private sealed class DefaultWaitHandle : EventWaitHandle
+        {
+            public DefaultWaitHandle(object owner, string key, MalockClient malock) : base(owner, key, malock)
+            {
+
+            }
+
+            protected override IWaitable NewWaitable()
+            {
+                return base.NewWaitable();
+            }
+        }
+
+        protected internal static EventWaitHandle NewDefaultWaitHandle(object owner, string key, MalockClient malock)
+        {
+            return new DefaultWaitHandle(owner, key, malock);
+        }
+
         public static void Sleep(int millisecondsTimeout)
         {
             Thread.Sleep(millisecondsTimeout);

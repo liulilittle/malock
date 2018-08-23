@@ -6,10 +6,8 @@
     using Interlocked = System.Threading.Interlocked;
     using Thread = System.Threading.Thread;
 
-    public sealed class SpinLock : IEventWaitHandle
+    public sealed class SpinLock : SyncBlockIndex
     {
-        private readonly EventWaitHandle handle;
-
         private class SpinLockWaitable : IWaitable
         {
             private volatile int signal = 0x00;
@@ -59,14 +57,6 @@
             }
         }
 
-        public EventWaitHandle Handle
-        {
-            get
-            {
-                return this.handle;
-            }
-        }
-
         private sealed class SpinLockWaitHandle : EventWaitHandle
         {
             private readonly SpinLock locker = default(SpinLock);
@@ -91,15 +81,19 @@
             }
         }
 
-        public SpinLock(string key, MalockClient malock) : this(key, malock, SpinLock.DefaultReduce)
-        {
-
-        }
-
-        public SpinLock(string key, MalockClient malock, bool reduce)
+        private SpinLock(string key, MalockClient malock, bool reduce) : base(key, malock)
         {
             this.Reduce = reduce;
-            this.handle = new SpinLockWaitHandle(this, key, malock);
+        }
+
+        public static SpinLock New(string key, MalockClient malock)
+        {
+            return New(key, malock, true);
+        }
+
+        public static SpinLock New(string key, MalockClient malock, bool reduce)
+        {
+            return NewOrGet(key, malock, () => new SpinLock(key, malock, reduce));
         }
 
         public bool Reduce
@@ -110,7 +104,7 @@
 
         public void Enter()
         {
-            if (!this.handle.TryEnter())
+            if (!this.Handle.TryEnter())
             {
                 throw new InvalidOperationException("The state of the current local lock causes the lock not to be acquired");
             }
@@ -123,12 +117,17 @@
 
         public bool TryEnter(int millisecondsTimeout)
         {
-            return this.handle.TryEnter(millisecondsTimeout);
+            return this.Handle.TryEnter(millisecondsTimeout);
         }
 
         public void Exit()
         {
-            this.handle.Exit();
+            this.Handle.Exit();
+        }
+
+        protected override EventWaitHandle NewWaitHandle(string key, MalockClient malock)
+        {
+            return new SpinLockWaitHandle(this, key, malock);
         }
     }
 }
