@@ -190,13 +190,20 @@
                 }
                 else
                 {
-                    socket.BeginSend(buffer, ofs, len, SocketFlags.None, out error, null, null);
+                    if (Malock.SynchronousTransmission)
+                    {
+                        socket.Send(buffer, ofs, len, SocketFlags.None, out error);
+                    }
+                    else
+                    {
+                        socket.BeginSend(buffer, ofs, len, SocketFlags.None, out error, null, null);
+                    }
                     if (error != SocketError.Success)
                     {
                         success = false;
                         this.error();
                     }
-                } 
+                }
             }
             catch (Exception)
             {

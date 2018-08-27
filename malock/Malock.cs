@@ -16,35 +16,39 @@
         /// <summary>
         /// 连接中断后重连间隔时间
         /// </summary>
-        public const int ReconnectionTime = 100;
+        public static int ReconnectionTime { get; set; } = 100;
         /// <summary>
         /// 连接中断后平滑到另一个连接的平滑时间
         /// </summary>
-        public const int SmoothingTime = 1000;
+        public static int SmoothingInvokeTime { get; set; } = 1000;
         /// <summary>
         /// 最大重入数
         /// </summary>
-        public const int MaxEnterCount = 10000;
+        public static int MaxEnterCount { get; set; } = 10000;
         /// <summary>
         /// 默认超时时间
         /// </summary>
-        public const int DefaultTimeout = 3000;
+        public static int DefaultTimeout { get; set; } = 3000;
         /// <summary>
         /// 缓存过期时间
         /// </summary>
-        public const int CacheExpiredTime = 1000 * 60 * 15;
+        public static int CacheExpiredTime { get; set; } = 1000 * 60 * 15;
         /// <summary>
         /// 确认流水线周期时间
         /// </summary>
-        public const int AckPipelineInterval = 333;
+        public static int AckPipelineInterval { get; set; } = 333;
         /// <summary>
         /// 确认流水线死锁所需次数
         /// </summary>
-        public const int AckPipelineDeadlockCount = 3;
+        public static int AckPipelineDeadlockCount { get; set; } = 3;
         /// <summary>
         /// 用于指定无限长等待时间的常数
         /// </summary>
         public const int Infinite = Timeout.Infinite;
+        /// <summary>
+        /// 同步传输
+        /// </summary>
+        public static bool SynchronousTransmission { get; set; } = false;
 
         public static void Ngen(Assembly assembly)
         {

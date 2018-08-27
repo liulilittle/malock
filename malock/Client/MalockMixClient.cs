@@ -437,7 +437,7 @@
                     if (currentsocket == sockets[0]) // 它可能只是链接发生中断，但服务器本身是可靠的，所以不需要平滑到备用服务器。
                     {
                         TimeSpan tv = unchecked(DateTime.Now - this.GetAbortTime(currentsocket));
-                        if (tv.TotalMilliseconds < Malock.SmoothingTime)
+                        if (tv.TotalMilliseconds < Malock.SmoothingInvokeTime)
                         {
                             this.preferred = currentsocket;
                         }

@@ -250,7 +250,7 @@
                     else
                     {
                         var delaytick = Malock.NewTimer();
-                        delaytick.Interval = Malock.SmoothingTime;
+                        delaytick.Interval = Malock.SmoothingInvokeTime;
                         delaytick.Tick += delegate
                         {
                             long elapsedMilliseconds = stopwatch.ElapsedMilliseconds;

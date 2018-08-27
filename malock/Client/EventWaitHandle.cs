@@ -317,7 +317,7 @@
                         exception = EventWaitHandle.NewAbortedException();
                         return false;
                     }
-                    Thread.Sleep(Malock.SmoothingTime);
+                    Thread.Sleep(Malock.SmoothingInvokeTime);
                     return this.InternalTryEnter(millisecondsTimeout, ref exception);
                 }
             }
